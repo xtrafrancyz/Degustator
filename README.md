@@ -7,6 +7,7 @@ Discord бот для сервера VimeWorld.ru
 - [youtube-dl](https://github.com/rg3/youtube-dl) - для получения ссылок на скачку видео с YouTube
 
 # Умеет
+- `!joke` - Шутить шутки
 - `!music` - Играть любой mp3 файл по ссылке или видео с YouTube
 - `!clear` - Удалять сообщения из чата
 - `!rank` - Назначать пользователям права

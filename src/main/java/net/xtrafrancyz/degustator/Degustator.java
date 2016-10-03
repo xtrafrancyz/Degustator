@@ -19,6 +19,7 @@ import net.xtrafrancyz.degustator.command.CommandManager;
 import net.xtrafrancyz.degustator.command.standard.ClearCommand;
 import net.xtrafrancyz.degustator.command.standard.HelpCommand;
 import net.xtrafrancyz.degustator.command.standard.InfoCommand;
+import net.xtrafrancyz.degustator.command.standard.JokeCommand;
 import net.xtrafrancyz.degustator.command.standard.MeCommand;
 import net.xtrafrancyz.degustator.command.standard.MusicCommand;
 import net.xtrafrancyz.degustator.command.standard.RankCommand;
@@ -56,6 +57,7 @@ public class Degustator {
         commandManager.registerCommand(new RankCommand());
         commandManager.registerCommand(new MusicCommand());
         commandManager.registerCommand(new InfoCommand());
+        commandManager.registerCommand(new JokeCommand());
         
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             client.getConnectedVoiceChannels().forEach(IVoiceChannel::leave);
