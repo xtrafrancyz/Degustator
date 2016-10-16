@@ -17,6 +17,10 @@ public class CoinCommand extends Command {
     
     @Override
     public void onCommand(IMessage message, String[] args) throws Exception {
+        if (ThreadLocalRandom.current().nextFloat() < .05){
+            message.getChannel().sendMessage("Монетка упала на ребро, чет непонятное...");
+            return;
+        }
         boolean coin = ThreadLocalRandom.current().nextBoolean();
         if (coin)
             message.getChannel().sendMessage("Выпал `орел`");
