@@ -43,10 +43,11 @@ public class OnlineCommand extends Command {
             }
             if (!moders.isEmpty()) {
                 moders.sort(String.CASE_INSENSITIVE_ORDER);
-                cache = "Модераторы онлайн: " + moders.stream().map(s -> '`' + s + '`').collect(Collectors.joining(", "));
+                cache = "Модераторы онлайн: " + moders.stream().map(s -> '`' + s + '`').collect(Collectors.joining(", ")) + ".";
             } else {
                 cache = "Нет ни одного модератора онлайн...";
             }
+            cache += "\nИгроков: `" + HttpUtils.get("http://mc.vimeworld.ru/mon/total.txt") + "`.";
             cacheExpire = System.currentTimeMillis() + 10_000;
         }
         message.getChannel().sendMessage(cache);
