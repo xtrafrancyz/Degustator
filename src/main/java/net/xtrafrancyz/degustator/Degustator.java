@@ -21,29 +21,42 @@ import net.xtrafrancyz.degustator.command.standard.InfoCommand;
 import net.xtrafrancyz.degustator.command.standard.JokeCommand;
 import net.xtrafrancyz.degustator.command.standard.MeCommand;
 import net.xtrafrancyz.degustator.command.standard.MusicCommand;
+import net.xtrafrancyz.degustator.command.standard.OnlineCommand;
 import net.xtrafrancyz.degustator.command.standard.RankCommand;
 import net.xtrafrancyz.degustator.storage.FileJsonStorage;
 import net.xtrafrancyz.degustator.storage.IStorage;
 import net.xtrafrancyz.degustator.util.Reflect;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
 
 public class Degustator {
     private static Degustator instance;
     
     public final Gson gson = new Gson();
+    public final Config config;
     public final IStorage storage;
     public final IDiscordClient client;
     public final Notifier notifier;
     
     private final CommandManager commandManager;
     
-    private Degustator() throws DiscordException {
+    private Degustator() throws DiscordException, IOException {
         instance = this;
+        this.config = gson.fromJson(
+            Files.readAllLines(FileSystems.getDefault().getPath("config.json")).stream()
+                .map(String::trim)
+                .filter(s -> !s.startsWith("#") && !s.isEmpty())
+                .reduce((a, b) -> a += b)
+                .orElse(""),
+            Config.class
+        );
         storage = new FileJsonStorage(new File("storage.json"));
         storage.load();
         ClientBuilder builder = new ClientBuilder();
-        builder.withToken(storage.get("bot.token"));
+        builder.withToken(config.token);
         client = builder.login();
         client.getDispatcher().registerListener(this);
         notifier = new Notifier(this);
@@ -58,6 +71,7 @@ public class Degustator {
         commandManager.registerCommand(new MusicCommand());
         commandManager.registerCommand(new InfoCommand());
         commandManager.registerCommand(new JokeCommand());
+        commandManager.registerCommand(new OnlineCommand(this));
         
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             client.getConnectedVoiceChannels().forEach(IVoiceChannel::leave);
@@ -121,7 +135,7 @@ public class Degustator {
         }
     }
     
-    public static void main(String[] args) throws DiscordException {
+    public static void main(String[] args) throws Exception {
         new Degustator();
     }
     
