@@ -6,6 +6,7 @@ import net.xtrafrancyz.degustator.command.Command;
 import net.xtrafrancyz.degustator.user.Permission;
 import net.xtrafrancyz.degustator.user.User;
 
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
 /**
@@ -24,6 +25,10 @@ public class MeCommand extends Command {
             perms = "дополнительных прав нет";
         else
             perms = "дополнительные права: " + user.permissions.stream().map(Permission::name).collect(Collectors.joining(", "));
-        message.reply("ваш ранг `" + user.rank + "`, " + perms);
+        String reply = "ваш ранг `" + user.rank + "`, " + perms + ".";
+        
+        reply += "\nДата регистрации: " + message.getAuthor().getCreationDate().format(DateTimeFormatter.ISO_DATE);
+        
+        message.reply(reply);
     }
 }
