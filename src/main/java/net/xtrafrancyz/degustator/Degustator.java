@@ -14,7 +14,6 @@ import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
 import sx.blah.discord.util.RateLimitException;
 
-import net.xtrafrancyz.Reflect;
 import net.xtrafrancyz.degustator.command.CommandManager;
 import net.xtrafrancyz.degustator.command.standard.ClearCommand;
 import net.xtrafrancyz.degustator.command.standard.HelpCommand;
@@ -25,6 +24,7 @@ import net.xtrafrancyz.degustator.command.standard.MusicCommand;
 import net.xtrafrancyz.degustator.command.standard.RankCommand;
 import net.xtrafrancyz.degustator.storage.FileJsonStorage;
 import net.xtrafrancyz.degustator.storage.IStorage;
+import net.xtrafrancyz.degustator.util.Reflect;
 
 import java.io.File;
 

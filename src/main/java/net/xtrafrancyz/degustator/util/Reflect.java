@@ -1,4 +1,4 @@
-package net.xtrafrancyz;
+package net.xtrafrancyz.degustator.util;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
