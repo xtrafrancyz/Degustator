@@ -16,6 +16,7 @@ import sx.blah.discord.util.RateLimitException;
 
 import net.xtrafrancyz.degustator.command.CommandManager;
 import net.xtrafrancyz.degustator.command.standard.ClearCommand;
+import net.xtrafrancyz.degustator.command.standard.CoinCommand;
 import net.xtrafrancyz.degustator.command.standard.HelpCommand;
 import net.xtrafrancyz.degustator.command.standard.InfoCommand;
 import net.xtrafrancyz.degustator.command.standard.JokeCommand;
@@ -72,6 +73,7 @@ public class Degustator {
         commandManager.registerCommand(new InfoCommand());
         commandManager.registerCommand(new JokeCommand());
         commandManager.registerCommand(new OnlineCommand(this));
+        commandManager.registerCommand(new CoinCommand());
         
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             client.getConnectedVoiceChannels().forEach(IVoiceChannel::leave);
