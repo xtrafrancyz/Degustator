@@ -43,7 +43,7 @@ public class OnlineCommand extends Command {
             }
             if (!moders.isEmpty()) {
                 moders.sort(String.CASE_INSENSITIVE_ORDER);
-                cache = "Модераторы онлайн: " + moders.stream().map(s -> '`' + s + '`').collect(Collectors.joining(", ")) + ".";
+                cache = "Модераторы онлайн " + moders.size() + ": " + moders.stream().map(s -> '`' + s + '`').collect(Collectors.joining(", ")) + ".";
             } else {
                 cache = "Нет ни одного модератора онлайн...";
             }
