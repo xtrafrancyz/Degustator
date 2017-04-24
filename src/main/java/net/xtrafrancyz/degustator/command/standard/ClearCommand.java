@@ -2,7 +2,7 @@ package net.xtrafrancyz.degustator.command.standard;
 
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
-import sx.blah.discord.util.MessageList;
+import sx.blah.discord.util.MessageHistory;
 
 import net.xtrafrancyz.degustator.command.Command;
 import net.xtrafrancyz.degustator.user.Permission;
@@ -39,27 +39,24 @@ public class ClearCommand extends Command {
     }
     
     private void clearAmount(IMessage message, int amount) throws Exception {
-        MessageList messages = message.getChannel().getMessages();
         if (amount > 99)
             amount = 99;
-        if (amount > messages.size())
-            amount = messages.size() - 1;
-        messages.deleteBefore(amount);
+        message.getChannel().getMessageHistory(amount).bulkDelete();
         message.getChannel().sendMessage("Удалено сообщений - `" + amount + "`");
     }
     
     private void clearUser(IMessage message, IUser user) throws Exception {
-        MessageList messages = message.getChannel().getMessages();
+        MessageHistory history = message.getChannel().getMessageHistory();
         ArrayList<IMessage> toRemove = new ArrayList<>(10);
         int max = 99;
-        for (IMessage msg : messages) {
-            if (msg.getAuthor() == user || msg.getAuthor().getID().equals(user.getID()))
+        for (IMessage msg : history) {
+            if (msg.getAuthor() == user || msg.getAuthor().getLongID() == user.getLongID())
                 toRemove.add(msg);
             if (max-- == 0)
                 break;
         }
         if (!toRemove.isEmpty())
-            messages.bulkDelete(toRemove);
+            message.getChannel().bulkDelete(toRemove);
         message.getChannel().sendMessage("Удалено сообщений от " + user.mention() + " - `" + toRemove.size() + "`");
     }
 }

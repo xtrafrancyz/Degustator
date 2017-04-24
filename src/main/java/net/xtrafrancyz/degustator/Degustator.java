@@ -5,11 +5,10 @@ import sun.net.www.protocol.http.HttpURLConnection;
 import sx.blah.discord.api.ClientBuilder;
 import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.events.EventSubscriber;
-import sx.blah.discord.handle.impl.events.MentionEvent;
-import sx.blah.discord.handle.impl.events.MessageReceivedEvent;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
+import sx.blah.discord.handle.impl.events.guild.channel.message.MentionEvent;
+import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IVoiceChannel;
-import sx.blah.discord.handle.obj.Status;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.MissingPermissionsException;
 import sx.blah.discord.util.RateLimitException;
@@ -82,7 +81,7 @@ public class Degustator {
     
     @EventSubscriber
     public void onReady(ReadyEvent event) throws RateLimitException, DiscordException {
-        client.changeStatus(Status.stream("бубенчики", "https://vimeworld.ru"));
+        client.changePlayingText("бубенчики");
     }
     
     @EventSubscriber
@@ -94,6 +93,8 @@ public class Degustator {
     @EventSubscriber
     public void onMention(MentionEvent event) {
         try {
+            if (event.getAuthor().equals(client.getOurUser()))
+                return;
             if (event.getMessage().getContent().contains("сам иди")) {
                 event.getMessage().reply("нет ты иди нахуй");
             } else {
@@ -114,20 +115,20 @@ public class Degustator {
                     event.getMessage().getChannel().sendMessage("Я пидорский бот. Иди нахуй");
                     break;
                 case "!reg":
-                    if (notifier.contains(event.getMessage().getAuthor().getID())) {
+                    if (notifier.contains(event.getMessage().getAuthor().getStringID())) {
                         event.getMessage().getChannel().sendMessage("Вы уже зарегистрированы");
                         return;
                     }
                     notifier.notify("Зарегался новый юзер: " + event.getMessage().getAuthor().getName());
-                    notifier.add(event.getMessage().getAuthor().getID());
+                    notifier.add(event.getMessage().getAuthor().getStringID());
                     event.getMessage().getChannel().sendMessage(":white_check_mark: Ура!");
                     break;
                 case "!unreg":
-                    if (!notifier.contains(event.getMessage().getAuthor().getID())) {
+                    if (!notifier.contains(event.getMessage().getAuthor().getStringID())) {
                         event.getMessage().getChannel().sendMessage("Вы не зарегистрированы");
                         return;
                     }
-                    notifier.remove(event.getMessage().getAuthor().getID());
+                    notifier.remove(event.getMessage().getAuthor().getStringID());
                     event.getMessage().getChannel().sendMessage(":white_check_mark: Ура!");
                     break;
                 case "!test":

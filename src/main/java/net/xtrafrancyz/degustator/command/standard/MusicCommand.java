@@ -7,7 +7,9 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import sun.net.www.protocol.http.HttpURLConnection;
 import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IVoiceChannel;
+import sx.blah.discord.handle.obj.IVoiceState;
 import sx.blah.discord.util.audio.AudioPlayer;
+import sx.blah.discord.util.cache.LongMap;
 
 import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.command.Command;
@@ -50,13 +52,13 @@ public class MusicCommand extends Command {
         switch (args[0].toLowerCase()) {
             case "summon":
             case "s":
-                List<IVoiceChannel> channels = message.getAuthor().getConnectedVoiceChannels();
-                for (IVoiceChannel channel : channels) {
-                    if (channel.getGuild().equals(message.getGuild())) {
-                        channel.join();
+                LongMap<IVoiceState> states = message.getAuthor().getVoiceStatesLong();
+                for (IVoiceState state : states.values()) {
+                    if (state.getGuild().equals(message.getGuild())) {
+                        state.getChannel().join();
                         message.reply("дратути))0)");
                         try {
-                            int vol = Integer.parseInt(Degustator.instance().storage.get("#" + message.getGuild().getID() + ".volume"));
+                            int vol = Integer.parseInt(Degustator.instance().storage.get("#" + message.getGuild().getStringID() + ".volume"));
                             if (vol < 1)
                                 vol = 1;
                             else if (vol > 100)
@@ -71,10 +73,10 @@ public class MusicCommand extends Command {
             case "kick":
             case "k":
                 if (canControl(message, null)) {
-                    channels = message.getClient().getConnectedVoiceChannels();
-                    for (IVoiceChannel channel : channels) {
-                        if (channel.getGuild().equals(message.getGuild())) {
-                            channel.leave();
+                    states = message.getAuthor().getVoiceStatesLong();
+                    for (IVoiceState state : states.values()) {
+                        if (state.getGuild().equals(message.getGuild())) {
+                            state.getChannel().leave();
                             AudioPlayer player = AudioPlayer.getAudioPlayerForGuild(message.getChannel().getGuild());
                             player.clear();
                             player.clean();
@@ -126,6 +128,7 @@ public class MusicCommand extends Command {
                     message.reply("вы ввели что-то не то");
                 } catch (Exception ex) {
                     message.reply("это не песня, это говно какое-то\n" + ex.getMessage());
+                    ex.printStackTrace();
                 }
                 break;
             case "skip":
@@ -191,7 +194,7 @@ public class MusicCommand extends Command {
                     message.reply("`!music vol <громкость>` - затихаю на значение от *0* до *100*");
                     return;
                 }
-                Degustator.instance().storage.set("#" + message.getGuild().getID() + ".volume", String.valueOf(vol));
+                Degustator.instance().storage.set("#" + message.getGuild().getStringID() + ".volume", String.valueOf(vol));
                 Degustator.instance().storage.save();
                 player.setVolume(vol / 100f);
                 break;
