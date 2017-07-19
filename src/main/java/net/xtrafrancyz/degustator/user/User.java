@@ -69,6 +69,6 @@ public class User {
     }
     
     public static User get(IUser user) {
-        return get(user.getID());
+        return get(user.getStringID());
     }
 }

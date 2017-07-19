@@ -32,7 +32,7 @@ public class OnlineCommand extends Command {
     public void onCommand(IMessage message, String[] args) throws Exception {
         if (System.currentTimeMillis() > cacheExpire) {
             List<String> moders = new ArrayList<>(10);
-            String response = HttpUtils.get(app.config.vimeworld.apiUrl + "/players/@list?token=" + app.config.vimeworld.token);
+            String response = HttpUtils.get("https://api.vime.world/online/staff");
             for (JsonElement elem : new JsonParser().parse(response).getAsJsonArray()) {
                 JsonObject player = elem.getAsJsonObject();
                 String rank = player.get("rank").getAsString();

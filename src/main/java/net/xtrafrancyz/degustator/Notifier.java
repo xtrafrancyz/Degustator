@@ -26,7 +26,7 @@ public class Notifier {
     
     public void notify(String message) throws RateLimitException, DiscordException, MissingPermissionsException {
         for (String id : users) {
-            IUser user = degustator.client.getUserByID(id);
+            IUser user = degustator.client.getUserByID(Long.parseUnsignedLong(id));
             if (user != null)
                 degustator.client.getOrCreatePMChannel(user).sendMessage(message);
         }
