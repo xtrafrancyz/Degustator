@@ -4,7 +4,6 @@ import sx.blah.discord.handle.obj.IMessage;
 
 import net.xtrafrancyz.degustator.command.Command;
 import net.xtrafrancyz.degustator.command.CommandManager;
-import net.xtrafrancyz.degustator.user.User;
 
 import java.util.Map;
 
@@ -24,15 +23,10 @@ public class HelpCommand extends Command {
     
     @Override
     public void onCommand(IMessage message, String[] args) throws Exception {
-        User user = User.get(message.getAuthor());
         if (args.length != 0) {
             Command command = commands.getCommand(args[0]);
             if (command == null) {
                 message.reply("нет такой команды");
-                return;
-            }
-            if (!user.hasPerm(command.perm)) {
-                message.reply("у вас недостаточно прав для просмотра помощи по этой команде...");
                 return;
             }
             String msg;
@@ -46,8 +40,6 @@ public class HelpCommand extends Command {
         String msg = "\nДоступные для вас команды: ```";
         boolean first = true;
         for (Map.Entry<String, Command> entry : commands.registered.entrySet()) {
-            if (!user.hasPerm(entry.getValue().perm))
-                continue;
             if (!first)
                 msg += ", ";
             else

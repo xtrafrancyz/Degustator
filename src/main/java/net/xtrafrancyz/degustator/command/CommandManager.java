@@ -3,7 +3,6 @@ package net.xtrafrancyz.degustator.command;
 import sx.blah.discord.handle.obj.IMessage;
 
 import net.xtrafrancyz.degustator.Degustator;
-import net.xtrafrancyz.degustator.user.User;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -42,10 +41,6 @@ public class CommandManager {
             String[] args = text.split(" ");
             Command command = getCommand(args[0].toLowerCase());
             if (command != null) {
-                if (!User.get(message.getAuthor()).hasPerm(command.perm)) {
-                    message.reply("у вас недостаточно прав для выполнения этой команды");
-                    return;
-                }
                 command.onCommand(message, Arrays.copyOfRange(args, 1, args.length));
             }
         } catch (Exception ex) {

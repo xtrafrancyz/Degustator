@@ -5,27 +5,27 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import sx.blah.discord.handle.obj.IMessage;
 
-import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.command.Command;
 import net.xtrafrancyz.degustator.util.HttpUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * @author xtrafrancyz
  */
 public class OnlineCommand extends Command {
-    private Degustator app;
+    private static final Set<String> MODER_RANKS = new HashSet<>(Arrays.asList("MODER", "CHIEF", "WARDEN"));
     private String cache = null;
     private long cacheExpire = 0;
     
-    public OnlineCommand(Degustator app) {
+    public OnlineCommand() {
         super("online",
             "`!online` - показывает модераторов онлайн на сервере");
-        this.app = app;
     }
     
     @Override
@@ -36,9 +36,7 @@ public class OnlineCommand extends Command {
             for (JsonElement elem : new JsonParser().parse(response).getAsJsonArray()) {
                 JsonObject player = elem.getAsJsonObject();
                 String rank = player.get("rank").getAsString();
-                if (Objects.equals(rank, "MODER") ||
-                    Objects.equals(rank, "CHIEF") ||
-                    Objects.equals(rank, "WARDEN"))
+                if (MODER_RANKS.contains(rank))
                     moders.add(player.get("username").getAsString());
             }
             if (!moders.isEmpty()) {

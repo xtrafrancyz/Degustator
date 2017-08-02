@@ -3,11 +3,8 @@ package net.xtrafrancyz.degustator.command.standard;
 import sx.blah.discord.handle.obj.IMessage;
 
 import net.xtrafrancyz.degustator.command.Command;
-import net.xtrafrancyz.degustator.user.Permission;
-import net.xtrafrancyz.degustator.user.User;
 
 import java.time.format.DateTimeFormatter;
-import java.util.stream.Collectors;
 
 /**
  * @author xtrafrancyz
@@ -19,16 +16,6 @@ public class MeCommand extends Command {
     
     @Override
     public void onCommand(IMessage message, String[] args) throws Exception {
-        User user = User.get(message.getAuthor());
-        String perms;
-        if (user.permissions.isEmpty())
-            perms = "дополнительных прав нет";
-        else
-            perms = "дополнительные права: " + user.permissions.stream().map(Permission::name).collect(Collectors.joining(", "));
-        String reply = "ваш ранг `" + user.rank + "`, " + perms + ".";
-        
-        reply += "\nДата регистрации: " + message.getAuthor().getCreationDate().format(DateTimeFormatter.ISO_DATE);
-        
-        message.reply(reply);
+        message.reply("Дата регистрации: " + message.getAuthor().getCreationDate().format(DateTimeFormatter.ISO_DATE));
     }
 }
