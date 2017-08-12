@@ -40,9 +40,13 @@ public class CommandManager {
             String text = message.getContent().substring(1);
             String[] args = text.split(" ");
             Command command = getCommand(args[0].toLowerCase());
-            if (command != null) {
-                command.onCommand(message, Arrays.copyOfRange(args, 1, args.length));
+            if (command == null)
+                return;
+            if (!command.canUse(message)) {
+                message.reply("У вас нет доступа к этой команде");
+                return;
             }
+            command.onCommand(message, Arrays.copyOfRange(args, 1, args.length));
         } catch (Exception ex) {
             ex.printStackTrace();
         }

@@ -1,14 +1,12 @@
 # Degustator
-Discord бот для сервера VimeWorld.ru
-
-## Использует
-- [Discord4J](https://github.com/austinv11/Discord4J) - API Discord
+Discord бот для сервера [VimeWorld.ru](https://discord.gg/vimeworld)
 
 ## Умеет
-- `!joke` - Шутить шутки
-- `!online` - Показывать модераторов онлайн на VimeWorld.ru
-- `!coin` - Подкидывает WMR и говорит результат
-- Синхронизировать аккаунты на VimeWorld.ru с ролями в Discord
+- `!joke` - Шутить шутки.
+- `!online` - Показывать модераторов онлайн на VimeWorld.ru.
+- `!coin` - Подкидывает WMR и говорит результат.
+- Синхронизировать аккаунты на VimeWorld.ru с ролями в Discord. Работает только на сервере [VimeWorld.ru](https://discord.gg/vimeworld)
+- Удалять сообщения с матами. Включается командой `!swearfilter`, которая доступна только владельцу сервера. Список плохих слов указывается в файле `badwords.txt`, по слову в строке.
 
 ## Установка
 1. Собрать проект с помощью `./mvn package`

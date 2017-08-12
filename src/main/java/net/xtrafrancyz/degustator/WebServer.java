@@ -52,7 +52,6 @@ public class WebServer implements HttpHandler {
             long id = Long.parseLong(params.get("id"));
             String username = params.get("username");
             degustator.synchronizer.register(id, username);
-            System.out.println("Synchonize: " + id + " to " + username);
             respond(exchange, "OK");
         } catch (Exception ex) {
             ex.printStackTrace();

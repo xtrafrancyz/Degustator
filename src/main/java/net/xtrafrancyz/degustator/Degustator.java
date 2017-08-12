@@ -7,15 +7,17 @@ import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
-import sx.blah.discord.handle.impl.events.guild.member.UserJoinEvent;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.RateLimitException;
 
 import net.xtrafrancyz.degustator.command.CommandManager;
+import net.xtrafrancyz.degustator.command.manage.SwearFilterCommand;
 import net.xtrafrancyz.degustator.command.standard.HelpCommand;
 import net.xtrafrancyz.degustator.command.standard.InfoCommand;
 import net.xtrafrancyz.degustator.command.standard.JokeCommand;
 import net.xtrafrancyz.degustator.command.standard.OnlineCommand;
+import net.xtrafrancyz.degustator.module.SwearFilter;
+import net.xtrafrancyz.degustator.module.VimeWorldRankSynchronizer;
 import net.xtrafrancyz.degustator.mysql.MysqlPool;
 
 import java.io.File;
@@ -24,7 +26,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 public class Degustator {
-    public static final long VIMEWORLD_GUILD_ID = 105720432073666560L;
     private static Degustator instance;
     
     public final Gson gson = new Gson();
@@ -34,11 +35,14 @@ public class Degustator {
     
     private final CommandManager commandManager;
     public final VimeWorldRankSynchronizer synchronizer;
+    public final SwearFilter swearFilter;
     
     private Degustator() throws Exception {
         instance = this;
         readConfig();
+        Scheduler.init(2);
         
+        client = new ClientBuilder().withToken(config.token).build();
         mysql = new MysqlPool(this);
         
         commandManager = new CommandManager(this);
@@ -46,12 +50,14 @@ public class Degustator {
         commandManager.registerCommand(new InfoCommand());
         commandManager.registerCommand(new JokeCommand());
         commandManager.registerCommand(new OnlineCommand());
-        
-        synchronizer = new VimeWorldRankSynchronizer(this);
+        commandManager.registerCommand(new SwearFilterCommand());
         
         new WebServer(this).start();
         
-        client = new ClientBuilder().withToken(config.token).login();
+        synchronizer = new VimeWorldRankSynchronizer(this);
+        swearFilter = new SwearFilter(this);
+        
+        client.login();
         client.getDispatcher().registerListener(this);
     }
     
@@ -80,14 +86,7 @@ public class Degustator {
     
     @EventSubscriber
     public void onReady(ReadyEvent event) throws RateLimitException, DiscordException {
-        client.changePlayingText("бубенчики");
-        synchronizer.startUpdater();
-    }
-    
-    @EventSubscriber
-    public void onUserJoin(UserJoinEvent event) {
-        if (event.getGuild().getLongID() == VIMEWORLD_GUILD_ID)
-            synchronizer.update(event.getUser());
+        client.changePlayingText("бубенчики | !help");
     }
     
     @EventSubscriber

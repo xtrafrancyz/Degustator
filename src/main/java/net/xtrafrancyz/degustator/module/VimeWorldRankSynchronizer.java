@@ -1,13 +1,20 @@
-package net.xtrafrancyz.degustator;
+package net.xtrafrancyz.degustator.module;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import sx.blah.discord.Discord4J;
+import sx.blah.discord.api.events.EventSubscriber;
+import sx.blah.discord.handle.impl.events.ReadyEvent;
+import sx.blah.discord.handle.impl.events.guild.member.UserJoinEvent;
 import sx.blah.discord.handle.obj.IGuild;
 import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
+import sx.blah.discord.util.DiscordException;
+import sx.blah.discord.util.RateLimitException;
 
+import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.mysql.Row;
 import net.xtrafrancyz.degustator.mysql.SelectResult;
 import net.xtrafrancyz.degustator.util.HttpUtils;
@@ -28,7 +35,9 @@ import java.util.function.Consumer;
  * @author xtrafrancyz
  */
 public class VimeWorldRankSynchronizer {
+    private static final long VIMEWORLD_GUILD_ID = 105720432073666560L;
     private static final long VERIFIED_ROLE = 342269949852778497L;
+    
     private final Map<String, Long> rankToRole = new HashMap<>();
     private final Set<Long> autoRoles = new HashSet<>();
     private final Degustator degustator;
@@ -46,6 +55,8 @@ public class VimeWorldRankSynchronizer {
         rankToRole.put("IMMORTAL", 342269608541159435L);
         autoRoles.addAll(rankToRole.values());
         
+        degustator.client.getDispatcher().registerListeners(this);
+        
         try {
             degustator.mysql.query("CREATE TABLE IF NOT EXISTS `linked` (\n" +
                 "  `id` bigint(20) NOT NULL,\n" +
@@ -59,10 +70,17 @@ public class VimeWorldRankSynchronizer {
         }
     }
     
-    public void startUpdater() {
+    @EventSubscriber
+    public void onReady(ReadyEvent event) throws RateLimitException, DiscordException {
         Thread updater = new Thread(this::updateExpiredTask);
         updater.setDaemon(true);
         updater.start();
+    }
+    
+    @EventSubscriber
+    public void onUserJoin(UserJoinEvent event) {
+        if (event.getGuild().getLongID() == VIMEWORLD_GUILD_ID)
+            update(event.getUser());
     }
     
     private void updateExpiredTask() {
@@ -146,7 +164,9 @@ public class VimeWorldRankSynchronizer {
                 ps.setLong(3, userid);
             });
         }
-        update(guild, guild.getUserByID(userid), username);
+        IUser user = guild.getUserByID(userid);
+        Discord4J.LOGGER.info("[Synchronizer] Registered: " + user.getDisplayName(guild) + " to " + username);
+        update(guild, user, username);
     }
     
     public void update(IUser user) {
@@ -201,8 +221,10 @@ public class VimeWorldRankSynchronizer {
                 long existed = role.getLongID();
                 if (existed == VERIFIED_ROLE)
                     continue;
-                if (autoRoles.contains(existed))
+                if (autoRoles.contains(existed)) {
+                    Discord4J.LOGGER.info("[Synchronizer] Remove role " + role.getName() + " from " + user.getDisplayName(guild));
                     user.removeRole(role);
+                }
             }
             return;
         }
@@ -212,8 +234,10 @@ public class VimeWorldRankSynchronizer {
                 continue;
             if (existed == id)
                 return;
-            if (autoRoles.contains(existed))
+            if (autoRoles.contains(existed)) {
+                Discord4J.LOGGER.info("[Synchronizer] Remove role " + role.getName() + " from " + user.getDisplayName(guild));
                 user.removeRole(role);
+            }
         }
         addRole(guild, user, guild.getRoleByID(id));
     }
@@ -222,11 +246,12 @@ public class VimeWorldRankSynchronizer {
         for (IRole has : user.getRolesForGuild(guild))
             if (has.equals(role))
                 return;
+        Discord4J.LOGGER.info("[Synchronizer] Add role " + role.getName() + " to " + user.getDisplayName(guild));
         user.addRole(role);
     }
     
     public IGuild getVimeWorldGuild() {
-        return degustator.client.getGuildByID(Degustator.VIMEWORLD_GUILD_ID);
+        return degustator.client.getGuildByID(VIMEWORLD_GUILD_ID);
     }
     
     private static String implode(String glue, Collection collection) {

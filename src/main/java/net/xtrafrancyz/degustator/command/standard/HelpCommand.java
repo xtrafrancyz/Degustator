@@ -40,6 +40,8 @@ public class HelpCommand extends Command {
         String msg = "\nДоступные для вас команды: ```";
         boolean first = true;
         for (Map.Entry<String, Command> entry : commands.registered.entrySet()) {
+            if (!entry.getValue().canUse(message))
+                continue;
             if (!first)
                 msg += ", ";
             else
