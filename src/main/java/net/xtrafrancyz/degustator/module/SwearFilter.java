@@ -68,14 +68,14 @@ public class SwearFilter {
     
     @EventSubscriber
     public void onMessage(MessageReceivedEvent event) {
-        if (isActive(event.getChannel())) {
+        if (isActive(event.getChannel()) && event.getAuthor().getLongID() != event.getGuild().getOwnerLongID()) {
             String[] words = event.getMessage().getContent().split(" ");
             for (String word : words)
                 if (badWords.contains(normalizeWord(word))) {
                     try {
                         event.getMessage().delete();
                         IMessage message = event.getChannel().sendMessage("**" + event.getAuthor().getDisplayName(event.getGuild()) + "**, пожалуйста, следите за словами.");
-                        Scheduler.schedule(message::delete, 3, TimeUnit.SECONDS);
+                        Scheduler.schedule(message::delete, 5, TimeUnit.SECONDS);
                     } catch (Exception ignored) {}
                     break;
                 }

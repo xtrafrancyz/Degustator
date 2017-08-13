@@ -165,7 +165,8 @@ public class VimeWorldRankSynchronizer {
             });
         }
         IUser user = guild.getUserByID(userid);
-        Discord4J.LOGGER.info("[Synchronizer] Registered: " + user.getDisplayName(guild) + " to " + username);
+        if (user != null)
+            Discord4J.LOGGER.info("[Synchronizer] Registered: " + user.getDisplayName(guild) + " to " + username);
         update(guild, user, username);
     }
     
