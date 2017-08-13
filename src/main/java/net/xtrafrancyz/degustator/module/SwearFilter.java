@@ -68,7 +68,7 @@ public class SwearFilter {
     
     @EventSubscriber
     public void onMessage(MessageReceivedEvent event) {
-        if (isActive(event.getChannel()) && event.getAuthor().getLongID() != event.getGuild().getOwnerLongID()) {
+        if (isActive(event.getChannel()) && (!event.getAuthor().equals(event.getGuild().getOwner()) && !event.getAuthor().equals(degustator.client.getOurUser()))) {
             String[] words = event.getMessage().getContent().split(" ");
             for (String word : words)
                 if (badWords.contains(normalizeWord(word))) {
