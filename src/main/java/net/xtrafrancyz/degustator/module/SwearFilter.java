@@ -35,11 +35,11 @@ public class SwearFilter {
         this.badWords = new HashSet<>();
         
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("badwords.txt"), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                line = line.trim();
-                if (!line.isEmpty())
-                    badWords.add(line);
+            String word;
+            while ((word = reader.readLine()) != null) {
+                word = normalizeWord(word.trim());
+                if (!word.isEmpty())
+                    badWords.add(word);
             }
         } catch (Exception ex) {
             enabled = false;
@@ -115,6 +115,8 @@ public class SwearFilter {
     }
     
     private static String normalizeWord(String str) {
+        if (str.isEmpty())
+            return "";
         char[] chars = str.toCharArray();
         int len = chars.length;
         int st = 0;
