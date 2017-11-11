@@ -2,7 +2,9 @@ package net.xtrafrancyz.degustator.module;
 
 import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.events.EventSubscriber;
+import sx.blah.discord.handle.impl.events.guild.channel.message.MessageEvent;
 import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
+import sx.blah.discord.handle.impl.events.guild.channel.message.MessageUpdateEvent;
 import sx.blah.discord.handle.obj.IChannel;
 import sx.blah.discord.handle.obj.IMessage;
 
@@ -19,6 +21,8 @@ import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author xtrafrancyz
@@ -68,18 +72,31 @@ public class SwearFilter {
     
     @EventSubscriber
     public void onMessage(MessageReceivedEvent event) {
-        if (isActive(event.getChannel()) && (!event.getAuthor().equals(event.getGuild().getOwner()) && !event.getAuthor().equals(degustator.client.getOurUser()))) {
-            String[] words = event.getMessage().getContent().split(" ");
-            for (String word : words)
-                if (badWords.contains(normalizeWord(word))) {
-                    try {
-                        event.getMessage().delete();
-                        IMessage message = event.getChannel().sendMessage("**" + event.getAuthor().getDisplayName(event.getGuild()) + "**, пожалуйста, следите за словами.");
-                        Scheduler.schedule(message::delete, 5, TimeUnit.SECONDS);
-                    } catch (Exception ignored) {}
-                    break;
-                }
+        if (isFilterable(event))
+            checkMessage(event.getMessage());
+    }
+    
+    @EventSubscriber
+    public void onMessageEdit(MessageUpdateEvent event) {
+        if (isFilterable(event))
+            checkMessage(event.getNewMessage());
+    }
+    
+    private void checkMessage(IMessage message) {
+        if (hasSwear(message.getContent())) {
+            try {
+                message.delete();
+                IMessage rs = message.getChannel().sendMessage("**" + message.getAuthor().getDisplayName(message.getGuild()) + "**, пожалуйста, следите за словами.");
+                Scheduler.schedule(rs::delete, 5, TimeUnit.SECONDS);
+            } catch (Exception ignored) {}
         }
+    }
+    
+    private boolean hasSwear(String message) {
+        for (String word : message.split(" "))
+            if (badWords.contains(normalizeWord(word)))
+                return true;
+        return false;
     }
     
     public boolean isEnabled() {
@@ -88,6 +105,10 @@ public class SwearFilter {
     
     public boolean isActive(IChannel channel) {
         return enabledChannels.contains(channel.getLongID());
+    }
+    
+    public boolean isFilterable(MessageEvent event) {
+        return isActive(event.getChannel()) && (!event.getAuthor().equals(event.getGuild().getOwner()) && !event.getAuthor().equals(degustator.client.getOurUser()));
     }
     
     public void disableFor(IChannel channel) {
