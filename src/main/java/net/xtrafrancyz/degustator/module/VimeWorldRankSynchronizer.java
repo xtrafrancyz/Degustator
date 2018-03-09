@@ -137,6 +137,10 @@ public class VimeWorldRankSynchronizer {
                 Thread.sleep(60000L);
             } catch (InterruptedException ex) {
                 return;
+            } catch (RateLimitException ex) {
+                try {
+                    Thread.sleep(ex.getRetryDelay());
+                } catch (InterruptedException ignored) {}
             } catch (Exception ex) {
                 ex.printStackTrace();
                 try {
