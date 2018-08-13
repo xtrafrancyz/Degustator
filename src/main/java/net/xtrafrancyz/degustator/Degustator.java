@@ -11,6 +11,7 @@ import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.RateLimitException;
 
 import net.xtrafrancyz.degustator.command.CommandManager;
+import net.xtrafrancyz.degustator.command.manage.MassBanCommand;
 import net.xtrafrancyz.degustator.command.manage.SwearFilterCommand;
 import net.xtrafrancyz.degustator.command.standard.HelpCommand;
 import net.xtrafrancyz.degustator.command.standard.InfoCommand;
@@ -51,6 +52,7 @@ public class Degustator {
         commandManager.registerCommand(new JokeCommand());
         commandManager.registerCommand(new OnlineCommand());
         commandManager.registerCommand(new SwearFilterCommand());
+        commandManager.registerCommand(new MassBanCommand());
         
         new WebServer(this).start();
         
