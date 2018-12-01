@@ -7,6 +7,8 @@ import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
+import sx.blah.discord.handle.obj.ActivityType;
+import sx.blah.discord.handle.obj.StatusType;
 import sx.blah.discord.util.DiscordException;
 import sx.blah.discord.util.RateLimitException;
 
@@ -88,7 +90,7 @@ public class Degustator {
     
     @EventSubscriber
     public void onReady(ReadyEvent event) throws RateLimitException, DiscordException {
-        client.changePlayingText("бубенчики | !help");
+        client.changePresence(StatusType.ONLINE, ActivityType.WATCHING, "прон | !help");
     }
     
     @EventSubscriber
