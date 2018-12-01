@@ -35,7 +35,7 @@ import java.util.function.Consumer;
  * @author xtrafrancyz
  */
 public class VimeWorldRankSynchronizer {
-    private static final long VIMEWORLD_GUILD_ID = 105720432073666560L;
+    public static final long VIMEWORLD_GUILD_ID = 105720432073666560L;
     private static final long VERIFIED_ROLE = 342269949852778497L;
     
     private final Map<String, Long> rankToRole = new HashMap<>();
@@ -60,10 +60,11 @@ public class VimeWorldRankSynchronizer {
         try {
             degustator.mysql.query("CREATE TABLE IF NOT EXISTS `linked` (\n" +
                 "  `id` bigint(20) NOT NULL,\n" +
-                "  `username` varchar(20) NOT NULL,\n" +
-                "  `updated` int(11) DEFAULT '0',\n" +
+                "  `username` varchar(20) DEFAULT NULL,\n" +
+                "  `updated` int(11) DEFAULT 0,\n" +
                 "  PRIMARY KEY (`id`),\n" +
-                "  KEY `iupdated` (`updated`)\n" +
+                "  KEY `iupdated` (`updated`),\n" +
+                "  KEY `username` (`username`)\n" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8;");
         } catch (SQLException e) {
             e.printStackTrace();
@@ -102,7 +103,7 @@ public class VimeWorldRankSynchronizer {
                     
                     Consumer<Map<String, Long>> rankLoader = usernames -> {
                         try {
-                            JsonArray arr = new JsonParser().parse(HttpUtils.apiGet("/user/name/" + implode(",", usernamesAccumulator.keySet()))).getAsJsonArray();
+                            JsonArray arr = new JsonParser().parse(HttpUtils.apiGet("/user/name/" + String.join(",", usernamesAccumulator.keySet()))).getAsJsonArray();
                             for (JsonElement elem : arr) {
                                 JsonObject object = elem.getAsJsonObject();
                                 String username = object.get("username").getAsString();
@@ -115,7 +116,13 @@ public class VimeWorldRankSynchronizer {
                     
                     for (Row row : select.getRows()) {
                         long id = row.getLong("id");
-                        usernamesAccumulator.put(row.getString("username"), id);
+                        String username = row.getString("username");
+                        if (username == null) {
+                            update(guild, guild.getUserByID(id), null);
+                            degustator.mysql.query("DELETE FROM linked WHERE id = ?", ps -> ps.setLong(1, id));
+                            continue;
+                        }
+                        usernamesAccumulator.put(username, id);
                         updated.add(id);
                         if (usernamesAccumulator.size() == 50) {
                             rankLoader.accept(usernamesAccumulator);
@@ -150,11 +157,28 @@ public class VimeWorldRankSynchronizer {
         }
     }
     
+    public String getVimeNick(long userid) throws SQLException {
+        SelectResult result = degustator.mysql.select("SELECT username FROM linked WHERE id = ?", ps -> ps.setLong(1, userid));
+        if (result.isEmpty())
+            return null;
+        else
+            return result.getFirst().getString("username");
+    }
+    
+    public long getDsId(String nick) throws SQLException {
+        SelectResult result = degustator.mysql.select("SELECT id FROM linked WHERE username = ?", ps -> ps.setString(1, nick));
+        if (result.isEmpty())
+            return -1;
+        else
+            return result.getFirst().getLong("id");
+    }
+    
     public void register(long userid, String username) throws SQLException {
         IGuild guild = getVimeWorldGuild();
         if (guild == null)
             return;
-        SelectResult result = degustator.mysql.select("SELECT * FROM linked WHERE id = ?", ps -> ps.setLong(1, userid));
+        
+        SelectResult result = degustator.mysql.select("SELECT id FROM linked WHERE id = ?", ps -> ps.setLong(1, userid));
         if (result.isEmpty()) {
             degustator.mysql.query("INSERT INTO linked (id, username, updated) VALUES (?, ?, ?)", ps -> {
                 ps.setLong(1, userid);
@@ -168,6 +192,18 @@ public class VimeWorldRankSynchronizer {
                 ps.setLong(3, userid);
             });
         }
+        
+        result = degustator.mysql.select("SELECT id FROM linked WHERE username = ?", ps -> ps.setString(1, username));
+        for (Row row : result.getRows()) {
+            long id = row.getLong("id");
+            try {
+                update(guild, guild.getUserByID(id), null);
+                degustator.mysql.query("DELETE FROM linked WHERE id = ?", ps -> ps.setLong(1, id));
+            } catch (Exception ex) {
+                degustator.mysql.query("UPDATE linked SET username = NULL WHERE id = ?", ps -> ps.setLong(1, id));
+            }
+        }
+        
         IUser user = guild.getUserByID(userid);
         if (user != null)
             Discord4J.LOGGER.info("[Synchronizer] Registered: " + user.getDisplayName(guild) + " to " + username);

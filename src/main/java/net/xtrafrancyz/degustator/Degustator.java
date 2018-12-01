@@ -15,8 +15,8 @@ import sx.blah.discord.util.RateLimitException;
 import net.xtrafrancyz.degustator.command.CommandManager;
 import net.xtrafrancyz.degustator.command.manage.MassBanCommand;
 import net.xtrafrancyz.degustator.command.manage.SwearFilterCommand;
+import net.xtrafrancyz.degustator.command.manage.VimenickCommand;
 import net.xtrafrancyz.degustator.command.standard.HelpCommand;
-import net.xtrafrancyz.degustator.command.standard.InfoCommand;
 import net.xtrafrancyz.degustator.command.standard.JokeCommand;
 import net.xtrafrancyz.degustator.command.standard.OnlineCommand;
 import net.xtrafrancyz.degustator.module.SwearFilter;
@@ -50,11 +50,12 @@ public class Degustator {
         
         commandManager = new CommandManager(this);
         commandManager.registerCommand(new HelpCommand(commandManager));
-        commandManager.registerCommand(new InfoCommand());
+        //commandManager.registerCommand(new InfoCommand());
         commandManager.registerCommand(new JokeCommand());
         commandManager.registerCommand(new OnlineCommand());
         commandManager.registerCommand(new SwearFilterCommand());
         commandManager.registerCommand(new MassBanCommand());
+        commandManager.registerCommand(new VimenickCommand());
         
         new WebServer(this).start();
         
