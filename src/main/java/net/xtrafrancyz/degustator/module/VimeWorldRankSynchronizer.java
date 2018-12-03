@@ -196,6 +196,8 @@ public class VimeWorldRankSynchronizer {
         result = degustator.mysql.select("SELECT id FROM linked WHERE username = ?", ps -> ps.setString(1, username));
         for (Row row : result.getRows()) {
             long id = row.getLong("id");
+            if (id == userid)
+                continue;
             try {
                 update(guild, guild.getUserByID(id), null);
                 degustator.mysql.query("DELETE FROM linked WHERE id = ?", ps -> ps.setLong(1, id));
@@ -240,7 +242,7 @@ public class VimeWorldRankSynchronizer {
                     it.remove();
             }
             if (oldLength != roles.size())
-                guild.editUserRoles(user, roles.toArray(new IRole[roles.size()]));
+                guild.editUserRoles(user, roles.toArray(new IRole[0]));
             return;
         }
         try {
@@ -274,7 +276,7 @@ public class VimeWorldRankSynchronizer {
             if (existed == VERIFIED_ROLE)
                 continue;
             if (existed == id)
-                return;
+                continue;
             if (autoRoles.contains(existed)) {
                 Discord4J.LOGGER.info("[Synchronizer] Remove role " + role.getName() + " from " + user.getDisplayName(guild));
                 user.removeRole(role);
@@ -284,9 +286,8 @@ public class VimeWorldRankSynchronizer {
     }
     
     private void addRole(IGuild guild, IUser user, IRole role) {
-        for (IRole has : user.getRolesForGuild(guild))
-            if (has.equals(role))
-                return;
+        if (user.hasRole(role))
+            return;
         Discord4J.LOGGER.info("[Synchronizer] Add role " + role.getName() + " to " + user.getDisplayName(guild));
         user.addRole(role);
     }
