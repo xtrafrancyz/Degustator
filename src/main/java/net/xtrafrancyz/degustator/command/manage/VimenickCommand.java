@@ -16,6 +16,7 @@ import java.util.List;
  */
 public class VimenickCommand extends Command {
     private static final long DISCORD_MODER_ROLE = 344881335401316356L;
+    private static final long ADMIN_ROLE = 106117738677665792L;
     
     public VimenickCommand() {
         super("vimenick",
@@ -87,7 +88,7 @@ public class VimenickCommand extends Command {
             return false;
         List<IRole> roles = message.getAuthor().getRolesForGuild(message.getGuild());
         for (IRole role : roles)
-            if (role.getLongID() == DISCORD_MODER_ROLE)
+            if (role.getLongID() == DISCORD_MODER_ROLE || role.getLongID() == ADMIN_ROLE)
                 return true;
         return false;
     }
