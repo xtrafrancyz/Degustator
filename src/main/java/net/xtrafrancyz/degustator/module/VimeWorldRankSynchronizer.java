@@ -8,6 +8,7 @@ import sx.blah.discord.Discord4J;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.handle.impl.events.ReadyEvent;
 import sx.blah.discord.handle.impl.events.guild.member.UserJoinEvent;
+import sx.blah.discord.handle.impl.events.user.UserUpdateEvent;
 import sx.blah.discord.handle.obj.IGuild;
 import sx.blah.discord.handle.obj.IRole;
 import sx.blah.discord.handle.obj.IUser;
@@ -80,8 +81,35 @@ public class VimeWorldRankSynchronizer {
     
     @EventSubscriber
     public void onUserJoin(UserJoinEvent event) {
-        if (event.getGuild().getLongID() == VIMEWORLD_GUILD_ID)
-            update(event.getUser());
+        if (event.getGuild().getLongID() == VIMEWORLD_GUILD_ID) {
+            try {
+                SelectResult result = degustator.mysql.select("SELECT * FROM linked WHERE id = ?", ps -> ps.setLong(1, event.getUser().getLongID()));
+                if (!result.isEmpty()) {
+                    IGuild guild = getVimeWorldGuild();
+                    if (guild == null)
+                        return;
+                    link(guild, event.getUser(), result.getFirst().getString("username"));
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
+    @EventSubscriber
+    public void onUserUpdate(UserUpdateEvent event) {
+        IGuild guild = getVimeWorldGuild();
+        if (guild != null && event.getNewUser().hasRole(guild.getRoleByID(VERIFIED_ROLE))) {
+            if (!event.getNewUser().getDisplayName(guild).equals(event.getOldUser().getDisplayName(guild))) {
+                try {
+                    String vimenick = getVimeNick(event.getUser().getLongID());
+                    if (vimenick != null)
+                        link(guild, event.getUser(), vimenick);
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
     
     private void updateExpiredTask() {
@@ -89,15 +117,19 @@ public class VimeWorldRankSynchronizer {
         while (!thread.isInterrupted()) {
             try {
                 IGuild guild = getVimeWorldGuild();
-                if (guild == null)
+                if (guild == null) {
+                    try {
+                        Thread.sleep(50L);
+                    } catch (InterruptedException ignored) {}
                     continue;
+                }
                 
                 SelectResult select = degustator.mysql.select("SELECT id, username FROM linked WHERE updated < ?", ps ->
                     ps.setInt(1, (int) (System.currentTimeMillis() / 1000) - 12 * 60 * 60)
                 );
                 
                 if (!select.isEmpty()) {
-                    Map<Long, String> ranks = new HashMap<>();
+                    Map<Long, VimeWorldUserData> ranks = new HashMap<>();
                     Map<String, Long> usernamesAccumulator = new HashMap<>(100);
                     List<Long> updated = new ArrayList<>(select.getRowCount());
                     
@@ -107,7 +139,7 @@ public class VimeWorldRankSynchronizer {
                             for (JsonElement elem : arr) {
                                 JsonObject object = elem.getAsJsonObject();
                                 String username = object.get("username").getAsString();
-                                ranks.put(usernames.get(username), object.get("rank").getAsString());
+                                ranks.put(usernames.get(username), new VimeWorldUserData(username, object.get("rank").getAsString()));
                             }
                         } catch (IOException e) {
                             e.printStackTrace();
@@ -118,7 +150,7 @@ public class VimeWorldRankSynchronizer {
                         long id = row.getLong("id");
                         String username = row.getString("username");
                         if (username == null) {
-                            update(guild, guild.getUserByID(id), null);
+                            unlink(guild, guild.getUserByID(id));
                             degustator.mysql.query("DELETE FROM linked WHERE id = ?", ps -> ps.setLong(1, id));
                             continue;
                         }
@@ -133,8 +165,8 @@ public class VimeWorldRankSynchronizer {
                     if (!usernamesAccumulator.isEmpty())
                         rankLoader.accept(usernamesAccumulator);
                     
-                    for (Map.Entry<Long, String> entry : ranks.entrySet())
-                        setRank(guild, guild.getUserByID(entry.getKey()), entry.getValue());
+                    for (Map.Entry<Long, VimeWorldUserData> entry : ranks.entrySet())
+                        updateUser(guild, guild.getUserByID(entry.getKey()), entry.getValue());
                     
                     degustator.mysql.query("UPDATE linked SET updated = ? WHERE id IN (" + implode(",", updated) + ")", ps -> {
                         ps.setInt(1, (int) (System.currentTimeMillis() / 1000));
@@ -199,7 +231,7 @@ public class VimeWorldRankSynchronizer {
             if (id == userid)
                 continue;
             try {
-                update(guild, guild.getUserByID(id), null);
+                unlink(guild, guild.getUserByID(id));
                 degustator.mysql.query("DELETE FROM linked WHERE id = ?", ps -> ps.setLong(1, id));
             } catch (Exception ex) {
                 degustator.mysql.query("UPDATE linked SET username = NULL WHERE id = ?", ps -> ps.setLong(1, id));
@@ -209,56 +241,51 @@ public class VimeWorldRankSynchronizer {
         IUser user = guild.getUserByID(userid);
         if (user != null)
             Discord4J.LOGGER.info("[Synchronizer] Registered: " + user.getDisplayName(guild) + " to " + username);
-        update(guild, user, username);
+        link(guild, user, username);
     }
     
-    public void update(IUser user) {
-        try {
-            SelectResult result = degustator.mysql.select("SELECT * FROM linked WHERE id = ?", ps -> ps.setLong(1, user.getLongID()));
-            if (!result.isEmpty())
-                update(user, result.getFirst().getString("username"));
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    public void update(IUser user, String linked) {
-        IGuild guild = getVimeWorldGuild();
-        if (guild == null)
-            return;
-        update(guild, user, linked);
-    }
-    
-    public void update(IGuild guild, IUser user, String linked) {
+    public void link(IGuild guild, IUser user, String linked) {
         if (user == null)
             return;
-        if (linked == null) {
-            List<IRole> roles = user.getRolesForGuild(guild);
-            int oldLength = roles.size();
-            Iterator<IRole> it = roles.iterator();
-            while (it.hasNext()) {
-                long id = it.next().getLongID();
-                if (VERIFIED_ROLE == id || autoRoles.contains(id))
-                    it.remove();
-            }
-            if (oldLength != roles.size())
-                guild.editUserRoles(user, roles.toArray(new IRole[0]));
-            return;
-        }
         try {
             JsonArray arr = new JsonParser().parse(HttpUtils.apiGet("/user/name/" + linked)).getAsJsonArray();
             String rank = null;
-            if (arr.size() == 1)
+            if (arr.size() == 1) {
                 rank = arr.get(0).getAsJsonObject().get("rank").getAsString();
-            setRank(guild, user, rank);
+                linked = arr.get(0).getAsJsonObject().get("username").getAsString();
+            }
+            updateUser(guild, user, new VimeWorldUserData(linked, rank));
         } catch (IOException ignored) {}
     }
     
-    private void setRank(IGuild guild, IUser user, String rank) {
+    private void unlink(IGuild guild, IUser user) {
         if (user == null)
             return;
+        List<IRole> roles = user.getRolesForGuild(guild);
+        int oldLength = roles.size();
+        Iterator<IRole> it = roles.iterator();
+        while (it.hasNext()) {
+            long id = it.next().getLongID();
+            if (VERIFIED_ROLE == id || autoRoles.contains(id))
+                it.remove();
+        }
+        if (oldLength != roles.size())
+            guild.editUserRoles(user, roles.toArray(new IRole[0]));
+        if (!user.getDisplayName(guild).equals(user.getName()))
+            guild.setUserNickname(user, null);
+    }
+    
+    private void updateUser(IGuild guild, IUser user, VimeWorldUserData data) {
+        if (user == null)
+            return;
+        
+        if (!data.username.equals(user.getDisplayName(guild))) {
+            Discord4J.LOGGER.info("[Synchronizer] Set username to " + data.username + " instead of " + user.getDisplayName(guild));
+            guild.setUserNickname(user, data.username);
+        }
+        
         addRole(guild, user, guild.getRoleByID(VERIFIED_ROLE));
-        Long id = rankToRole.get(rank);
+        Long id = rankToRole.get(data.rank);
         if (id == null) {
             for (IRole role : user.getRolesForGuild(guild)) {
                 long existed = role.getLongID();
@@ -301,5 +328,15 @@ public class VimeWorldRankSynchronizer {
         for (Object username : collection)
             joined.append(username).append(glue);
         return joined.delete(joined.length() - glue.length(), joined.length()).toString();
+    }
+    
+    private static class VimeWorldUserData {
+        String username;
+        String rank;
+        
+        public VimeWorldUserData(String username, String rank) {
+            this.username = username;
+            this.rank = rank;
+        }
     }
 }

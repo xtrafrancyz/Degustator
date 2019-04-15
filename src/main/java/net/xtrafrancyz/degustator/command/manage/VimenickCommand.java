@@ -63,6 +63,7 @@ public class VimenickCommand extends Command {
         String nick = Degustator.instance().synchronizer.getVimeNick(user.getLongID());
         if (nick != null) {
             message.getChannel().sendMessage("Ник юзера `" + getDsName(message.getGuild(), user) + "` на вайме - `" + nick + "`");
+            Degustator.instance().synchronizer.link(message.getGuild(), user, nick);
         } else {
             message.getChannel().sendMessage("Юзер `" + getDsName(message.getGuild(), user) + "` не привязан к аккаунту вайма");
         }
@@ -73,6 +74,7 @@ public class VimenickCommand extends Command {
         IUser user = message.getGuild().getUserByID(id);
         if (user != null) {
             message.getChannel().sendMessage("Ник юзера `" + getDsName(message.getGuild(), user) + "` на вайме - `" + nick + "`");
+            Degustator.instance().synchronizer.link(message.getGuild(), user, nick);
         } else {
             message.getChannel().sendMessage("Ник `" + nick + "` не привязан к дискорду");
         }
