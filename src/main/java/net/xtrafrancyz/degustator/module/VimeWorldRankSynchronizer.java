@@ -38,6 +38,7 @@ import java.util.function.Consumer;
 public class VimeWorldRankSynchronizer {
     public static final long VIMEWORLD_GUILD_ID = 105720432073666560L;
     private static final long VERIFIED_ROLE = 342269949852778497L;
+    private static final long NITRO_BOOSTER_ROLE = 585532209121853455L;
     
     private final Map<String, Long> rankToRole = new HashMap<>();
     private final Set<Long> autoRoles = new HashSet<>();
@@ -271,7 +272,7 @@ public class VimeWorldRankSynchronizer {
         }
         if (oldLength != roles.size())
             guild.editUserRoles(user, roles.toArray(new IRole[0]));
-        if (!user.getDisplayName(guild).equals(user.getName()))
+        if (!hasNitroBoost(guild, user) && user.getNicknameForGuild(guild) != null)
             guild.setUserNickname(user, null);
     }
     
@@ -279,7 +280,7 @@ public class VimeWorldRankSynchronizer {
         if (user == null)
             return;
         
-        if (!data.username.equals(user.getDisplayName(guild))) {
+        if (!hasNitroBoost(guild, user) && !data.username.equals(user.getDisplayName(guild))) {
             Discord4J.LOGGER.info("[Synchronizer] Set username to " + data.username + " instead of " + user.getDisplayName(guild));
             guild.setUserNickname(user, data.username);
         }
@@ -321,6 +322,13 @@ public class VimeWorldRankSynchronizer {
     
     public IGuild getVimeWorldGuild() {
         return degustator.client.getGuildByID(VIMEWORLD_GUILD_ID);
+    }
+    
+    private boolean hasNitroBoost(IGuild guild, IUser user) {
+        for (IRole role : user.getRolesForGuild(guild))
+            if (role.getLongID() == NITRO_BOOSTER_ROLE)
+                return true;
+        return false;
     }
     
     private static String implode(String glue, Collection collection) {
