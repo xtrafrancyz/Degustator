@@ -1,5 +1,6 @@
 package net.xtrafrancyz.degustator.command.manage;
 
+import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Message;
 import reactor.core.publisher.Mono;
 
@@ -26,20 +27,17 @@ public class MassBanCommand extends Command {
             DiscordUtils.sendMessage(message, "Длина начала ника должна быть хотя бы 4 символа, во избежание ошибочных банов");
             return;
         }
-        message.getGuild().subscribe(guild -> {
-            guild.getMembers()
-                .filter(m -> m.getUsername().startsWith(start))
-                .all(m -> {
-                    m.ban(spec -> {
-                        spec.setDeleteMessageDays(1);
-                        spec.setReason("Ручной массовый бан");
-                    }).subscribe();
-                    return true;
-                })
-                .subscribe(ignored -> {
-                    DiscordUtils.sendMessage(message, "Юзеры забанены (хз сколько, апи говно)");
-                });
-        });
+        message.getGuild()
+            .flatMapMany(Guild::getMembers)
+            .filter(m -> m.getUsername().startsWith(start))
+            .flatMap(m -> m.ban(spec -> {
+                spec.setDeleteMessageDays(1);
+                spec.setReason("Ручной массовый бан");
+            }))
+            .count()
+            .subscribe(banned -> {
+                DiscordUtils.sendMessage(message, "Забанено пользователей: " + banned);
+            });
     }
     
     @Override

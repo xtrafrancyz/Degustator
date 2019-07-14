@@ -8,6 +8,8 @@ import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.presence.Activity;
 import discord4j.core.object.presence.Presence;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.xtrafrancyz.degustator.command.CommandManager;
 import net.xtrafrancyz.degustator.command.manage.MassBanCommand;
@@ -27,6 +29,7 @@ import java.nio.file.Files;
 
 public class Degustator {
     private static Degustator instance;
+    public static final Logger log = LoggerFactory.getLogger("Degustator");
     
     public final Gson gson = new Gson();
     public Config config;

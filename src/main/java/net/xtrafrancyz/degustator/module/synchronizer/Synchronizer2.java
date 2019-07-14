@@ -49,7 +49,7 @@ public class Synchronizer2 {
         RANK_TO_ROLE.put("YOUTUBE", Snowflake.of(299093535007703050L));
         RANK_TO_ROLE.put("VIP", Snowflake.of(342269106466324482L));
         RANK_TO_ROLE.put("PREMIUM", Snowflake.of(342269249194033152L));
-        RANK_TO_ROLE.put("HOLY", Snowflake.of(42269451020009473L));
+        RANK_TO_ROLE.put("HOLY", Snowflake.of(342269451020009473L));
         RANK_TO_ROLE.put("IMMORTAL", Snowflake.of(342269608541159435L));
         AUTOROLES.addAll(RANK_TO_ROLE.values());
     }
@@ -139,7 +139,7 @@ public class Synchronizer2 {
     }
     
     public void update(Member member, String username, boolean writeToDb) {
-        System.out.println("Check: " + member.getDisplayName());
+        Degustator.log.info("Check: " + member.getDisplayName());
         DiscordUtils.getMemberRoles(member, roles -> {
             Set<Snowflake> originalRoles = new HashSet<>(roles);
             List<Consumer<GuildMemberEditSpec>> modifiers = new ArrayList<>();
@@ -181,9 +181,8 @@ public class Synchronizer2 {
                     member.edit(spec -> {
                         for (Consumer<GuildMemberEditSpec> modifier : modifiers)
                             modifier.accept(spec);
-                        spec.setReason("VimeWorld.ru Synchronization");
                         
-                        System.out.println("User " + member.getUsername() + "#" + member.getDiscriminator() + " updated (" + username + ")");
+                        Degustator.log.info("User " + member.getUsername() + "#" + member.getDiscriminator() + " updated (" + username + ")");
                         if (dbWrite != null)
                             dbWrite.run();
                     }).subscribe();

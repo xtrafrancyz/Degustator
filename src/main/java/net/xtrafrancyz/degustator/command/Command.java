@@ -30,13 +30,10 @@ public abstract class Command {
     public Mono<Boolean> checkIsAuthorIsGuildOwner(Message message) {
         if (!message.getAuthor().isPresent())
             return Mono.just(false);
-        return Mono.create(sink -> {
-            message.getGuild().subscribe(guild -> {
-                sink.success(
-                    guild.getOwnerId().equals(message.getAuthor().get().getId())
-                );
-            });
-        });
+        return message.getGuild()
+            .flatMap(guild -> Mono.just(guild.getOwnerId()))
+            .filter(id -> id.equals(message.getAuthor().get().getId()))
+            .hasElement();
     }
     
     public abstract void onCommand(Message message, String[] args) throws Exception;

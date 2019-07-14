@@ -124,8 +124,12 @@ public class JokeCommand extends Command {
     
     @Override
     public void onCommand(Message message, String[] args) throws Exception {
-        message.getChannel().subscribe(c ->
-            c.createMessage(JokeCommand.JOKES[ThreadLocalRandom.current().nextInt(JokeCommand.JOKES.length)]).subscribe()
-        );
+        message.getChannel()
+            .flatMap(c -> c.createMessage(getRandomJoke()))
+            .subscribe();
+    }
+    
+    private String getRandomJoke() {
+        return JOKES[ThreadLocalRandom.current().nextInt(JOKES.length)];
     }
 }
