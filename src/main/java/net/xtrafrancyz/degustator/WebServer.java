@@ -3,6 +3,7 @@ package net.xtrafrancyz.degustator;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import discord4j.core.object.util.Snowflake;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -49,9 +50,9 @@ public class WebServer implements HttpHandler {
                 return;
             }
             Map<String, String> params = splitQuery(exchange.getRequestURI());
-            long id = Long.parseLong(params.get("id"));
+            Snowflake id = Snowflake.of(params.get("id"));
             String username = params.get("username");
-            degustator.synchronizer.register(id, username);
+            degustator.synchronizer.link(id, username);
             respond(exchange, "OK");
         } catch (Exception ex) {
             ex.printStackTrace();

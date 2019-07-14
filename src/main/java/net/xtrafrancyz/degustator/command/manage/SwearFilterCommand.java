@@ -1,10 +1,12 @@
 package net.xtrafrancyz.degustator.command.manage;
 
-import sx.blah.discord.handle.obj.IMessage;
+import discord4j.core.object.entity.Message;
+import reactor.core.publisher.Mono;
 
 import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.command.Command;
 import net.xtrafrancyz.degustator.module.SwearFilter;
+import net.xtrafrancyz.degustator.util.DiscordUtils;
 
 /**
  * @author xtrafrancyz
@@ -16,26 +18,26 @@ public class SwearFilterCommand extends Command {
     }
     
     @Override
-    public void onCommand(IMessage message, String[] args) throws Exception {
+    public void onCommand(Message message, String[] args) throws Exception {
         SwearFilter swearFilter = Degustator.instance().swearFilter;
         if (!swearFilter.isEnabled()) {
-            message.getChannel().sendMessage("Фильтр мата не настроен.");
+            DiscordUtils.sendMessage(message, "Фильтр мата не настроен.");
             message.delete();
             return;
         }
-        if (swearFilter.isActive(message.getChannel())) {
-            swearFilter.disableFor(message.getChannel());
-            message.getChannel().sendMessage("Фильтр мата для этого канала теперь **отключен**");
+        if (swearFilter.isActive(message.getChannelId())) {
+            swearFilter.disableFor(message.getChannelId());
+            DiscordUtils.sendMessage(message, "Фильтр мата для этого канала теперь **отключен**");
             message.delete();
         } else {
-            swearFilter.enableFor(message.getChannel());
-            message.getChannel().sendMessage("Фильтр мата для этого канала теперь **включен**");
+            swearFilter.enableFor(message.getChannelId());
+            DiscordUtils.sendMessage(message, "Фильтр мата для этого канала теперь **включен**");
             message.delete();
         }
     }
     
     @Override
-    public boolean canUse(IMessage message) {
-        return message.getGuild().getOwnerLongID() == message.getAuthor().getLongID();
+    public Mono<Boolean> canUse(Message message) {
+        return checkIsAuthorIsGuildOwner(message);
     }
 }

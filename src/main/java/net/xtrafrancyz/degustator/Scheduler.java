@@ -38,6 +38,10 @@ public class Scheduler {
         return task.id;
     }
     
+    public static void execute(Runnable runnable) {
+        threadPool.execute(runnable);
+    }
+    
     public static void cancelTask(int id) {
         Task task = runners.remove(id);
         if (task != null)

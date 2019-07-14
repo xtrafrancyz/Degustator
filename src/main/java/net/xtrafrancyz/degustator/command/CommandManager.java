@@ -1,6 +1,6 @@
 package net.xtrafrancyz.degustator.command;
 
-import sx.blah.discord.handle.obj.IMessage;
+import discord4j.core.object.entity.Message;
 
 import net.xtrafrancyz.degustator.Degustator;
 
@@ -35,16 +35,20 @@ public class CommandManager {
         return alises.get(cmd);
     }
     
-    public void process(IMessage message) {
-        try {
-            String text = message.getContent().substring(1);
-            String[] args = text.split(" ");
-            Command command = getCommand(args[0].toLowerCase());
-            if (command == null || !command.canUse(message))
-                return;
-            command.onCommand(message, Arrays.copyOfRange(args, 1, args.length));
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
+    public void process(Message message) {
+        String text = message.getContent().orElse("!").substring(1);
+        String[] args = text.split(" ");
+        Command command = getCommand(args[0].toLowerCase());
+        if (command == null)
+            return;
+        command.canUse(message).subscribe(can -> {
+            if (can) {
+                try {
+                    command.onCommand(message, Arrays.copyOfRange(args, 1, args.length));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
     }
 }

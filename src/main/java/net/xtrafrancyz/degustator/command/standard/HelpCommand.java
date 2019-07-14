@@ -1,11 +1,13 @@
 package net.xtrafrancyz.degustator.command.standard;
 
-import sx.blah.discord.handle.obj.IMessage;
+import discord4j.core.object.entity.Message;
+import reactor.core.publisher.Flux;
 
 import net.xtrafrancyz.degustator.command.Command;
 import net.xtrafrancyz.degustator.command.CommandManager;
+import net.xtrafrancyz.degustator.util.DiscordUtils;
 
-import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @author xtrafrancyz
@@ -22,11 +24,11 @@ public class HelpCommand extends Command {
     }
     
     @Override
-    public void onCommand(IMessage message, String[] args) throws Exception {
+    public void onCommand(Message message, String[] args) throws Exception {
         if (args.length != 0) {
             Command command = commands.getCommand(args[0]);
             if (command == null) {
-                message.reply("нет такой команды");
+                DiscordUtils.reply(message, "нет такой команды");
                 return;
             }
             String msg;
@@ -34,22 +36,26 @@ public class HelpCommand extends Command {
                 msg = command.help;
             else
                 msg = "У команды !" + command.command + " нет описания :frowning2:";
-            message.getChannel().sendMessage(msg);
+            DiscordUtils.sendMessage(message, msg);
             return;
         }
-        String msg = "\nДоступные для вас команды: ```";
-        boolean first = true;
-        for (Map.Entry<String, Command> entry : commands.registered.entrySet()) {
-            if (!entry.getValue().canUse(message))
-                continue;
-            if (!first)
-                msg += ", ";
-            else
-                first = false;
-            msg += entry.getKey();
-        }
-        msg += "```";
-        msg += "Напишите `!help <команда>` чтобы посмотреть описание команды";
-        message.reply(msg);
+        
+        Flux.mergeSequential(
+            commands.registered.values()
+                .stream()
+                .map(cmd -> cmd.canUse(message))
+                .collect(Collectors.toList()))
+            .zipWithIterable(commands.registered.values())
+            .reduce("", (str, tuple) -> {
+                if (tuple.getT1())
+                    return str + ", " + tuple.getT2().command;
+                return str;
+            })
+            .subscribe(text -> {
+                text = text.substring(2);
+                text = "\nДоступные для вас команды: ```" + text + "```";
+                text += "Напишите `!help <команда>` чтобы посмотреть описание команды";
+                DiscordUtils.reply(message, text);
+            });
     }
 }

@@ -1,7 +1,7 @@
 package net.xtrafrancyz.degustator.command;
 
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IUser;
+import discord4j.core.object.entity.Message;
+import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,9 +23,21 @@ public abstract class Command {
         this.help = help;
     }
     
-    public boolean canUse(IMessage message) {
-        return true;
+    public Mono<Boolean> canUse(Message message) {
+        return Mono.just(true);
     }
     
-    public abstract void onCommand(IMessage message, String[] args) throws Exception;
+    public Mono<Boolean> checkIsAuthorIsGuildOwner(Message message) {
+        if (!message.getAuthor().isPresent())
+            return Mono.just(false);
+        return Mono.create(sink -> {
+            message.getGuild().subscribe(guild -> {
+                sink.success(
+                    guild.getOwnerId().equals(message.getAuthor().get().getId())
+                );
+            });
+        });
+    }
+    
+    public abstract void onCommand(Message message, String[] args) throws Exception;
 }

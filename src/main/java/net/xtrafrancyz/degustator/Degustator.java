@@ -2,15 +2,12 @@ package net.xtrafrancyz.degustator;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonWriter;
-import sx.blah.discord.api.ClientBuilder;
-import sx.blah.discord.api.IDiscordClient;
-import sx.blah.discord.api.events.EventSubscriber;
-import sx.blah.discord.handle.impl.events.ReadyEvent;
-import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
-import sx.blah.discord.handle.obj.ActivityType;
-import sx.blah.discord.handle.obj.StatusType;
-import sx.blah.discord.util.DiscordException;
-import sx.blah.discord.util.RateLimitException;
+import discord4j.core.DiscordClient;
+import discord4j.core.DiscordClientBuilder;
+import discord4j.core.event.domain.lifecycle.ReadyEvent;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.presence.Activity;
+import discord4j.core.object.presence.Presence;
 
 import net.xtrafrancyz.degustator.command.CommandManager;
 import net.xtrafrancyz.degustator.command.manage.MassBanCommand;
@@ -20,7 +17,7 @@ import net.xtrafrancyz.degustator.command.standard.HelpCommand;
 import net.xtrafrancyz.degustator.command.standard.JokeCommand;
 import net.xtrafrancyz.degustator.command.standard.OnlineCommand;
 import net.xtrafrancyz.degustator.module.SwearFilter;
-import net.xtrafrancyz.degustator.module.VimeWorldRankSynchronizer;
+import net.xtrafrancyz.degustator.module.synchronizer.Synchronizer2;
 import net.xtrafrancyz.degustator.mysql.MysqlPool;
 
 import java.io.File;
@@ -33,11 +30,11 @@ public class Degustator {
     
     public final Gson gson = new Gson();
     public Config config;
-    public final IDiscordClient client;
+    public final DiscordClient client;
     public final MysqlPool mysql;
     
     private final CommandManager commandManager;
-    public final VimeWorldRankSynchronizer synchronizer;
+    public final Synchronizer2 synchronizer;
     public final SwearFilter swearFilter;
     
     private Degustator() throws Exception {
@@ -45,12 +42,17 @@ public class Degustator {
         readConfig();
         Scheduler.init(2);
         
-        client = new ClientBuilder().withToken(config.token).build();
+        client = new DiscordClientBuilder(config.token).build();
+        client.getEventDispatcher().on(ReadyEvent.class).subscribe(this::onReady);
+        client.getEventDispatcher().on(MessageCreateEvent.class).subscribe(this::onMessage);
+        
         mysql = new MysqlPool(this);
+        
+        synchronizer = new Synchronizer2(this);
+        swearFilter = new SwearFilter(this);
         
         commandManager = new CommandManager(this);
         commandManager.registerCommand(new HelpCommand(commandManager));
-        //commandManager.registerCommand(new InfoCommand());
         commandManager.registerCommand(new JokeCommand());
         commandManager.registerCommand(new OnlineCommand());
         commandManager.registerCommand(new SwearFilterCommand());
@@ -59,11 +61,7 @@ public class Degustator {
         
         new WebServer(this).start();
         
-        synchronizer = new VimeWorldRankSynchronizer(this);
-        swearFilter = new SwearFilter(this);
-        
-        client.login();
-        client.getDispatcher().registerListener(this);
+        client.login().block();
     }
     
     private void readConfig() throws IOException {
@@ -89,15 +87,15 @@ public class Degustator {
         }
     }
     
-    @EventSubscriber
-    public void onReady(ReadyEvent event) throws RateLimitException, DiscordException {
-        client.changePresence(StatusType.ONLINE, ActivityType.WATCHING, "прон | !help");
+    public void onReady(ReadyEvent event) {
+        event.getClient().updatePresence(Presence.online(Activity.watching("прон | !help")));
     }
     
-    @EventSubscriber
-    public void onMessage(MessageReceivedEvent event) {
-        if (event.getMessage().getContent().startsWith("!"))
-            commandManager.process(event.getMessage());
+    public void onMessage(MessageCreateEvent event) {
+        event.getMessage().getContent().ifPresent(content -> {
+            if (content.startsWith("!"))
+                commandManager.process(event.getMessage());
+        });
     }
     
     public static void main(String[] args) throws Exception {

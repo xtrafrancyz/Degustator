@@ -1,22 +1,26 @@
 package net.xtrafrancyz.degustator.command.manage;
 
-import sx.blah.discord.handle.obj.IGuild;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IRole;
-import sx.blah.discord.handle.obj.IUser;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.User;
+import discord4j.core.object.util.Snowflake;
+import reactor.core.publisher.Mono;
 
 import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.command.Command;
-import net.xtrafrancyz.degustator.module.VimeWorldRankSynchronizer;
+import net.xtrafrancyz.degustator.module.synchronizer.Synchronizer2;
+import net.xtrafrancyz.degustator.util.DiscordUtils;
 
-import java.util.List;
+import java.util.Set;
 
 /**
  * @author xtrafrancyz
  */
 public class VimenickCommand extends Command {
-    private static final long DISCORD_MODER_ROLE = 344881335401316356L;
-    private static final long ADMIN_ROLE = 106117738677665792L;
+    private static final Snowflake DISCORD_MODER_ROLE = Snowflake.of(344881335401316356L);
+    private static final Snowflake ADMIN_ROLE = Snowflake.of(106117738677665792L);
+    
+    private Synchronizer2 synchronizer = Degustator.instance().synchronizer;
     
     public VimenickCommand() {
         super("vimenick",
@@ -25,73 +29,104 @@ public class VimenickCommand extends Command {
     }
     
     @Override
-    public void onCommand(IMessage message, String[] args) throws Exception {
+    public void onCommand(Message message, String[] args) throws Exception {
         if (args.length == 0) {
             usage(message);
             return;
         }
-        IUser user;
-        if (message.getMentions().isEmpty()) {
+        Set<Snowflake> mentions = message.getUserMentionIds();
+        if (mentions.isEmpty()) {
             if (args[0].startsWith("$")) {
                 vimeToDs(message, args[0].substring(1));
                 return;
             }
-            long userid = -1;
+            long userid;
             try {
                 userid = Long.parseLong(args[0]);
-            } catch (Exception ignored) {}
-            if (userid == -1) {
+            } catch (Exception ignored) {
                 usage(message);
                 return;
             }
-            user = message.getGuild().getUserByID(userid);
+            message.getGuild().subscribe(guild -> {
+                guild.getMemberById(Snowflake.of(userid))
+                    .onErrorResume(ignored -> Mono.empty())
+                    .subscribe(u -> {
+                        dsToVime(message, u);
+                    });
+            });
         } else {
-            user = message.getMentions().get(0);
+            message.getUserMentions().subscribe(u -> {
+                dsToVime(message, u);
+            });
         }
-        dsToVime(message, user);
     }
     
-    private void usage(IMessage message) {
-        message.getChannel().sendMessage("Использование: `!vimenick @юзер` или `!vimenick 123456789` или `!vimenick $nickNaVime`");
+    private void usage(Message message) {
+        DiscordUtils.sendMessage(message, "Использование: `!vimenick @юзер` или `!vimenick 123456789` или `!vimenick $nickNaVime`");
     }
     
-    private void dsToVime(IMessage message, IUser user) throws Exception {
+    private void dsToVime(Message message, User user) {
         if (user == null) {
-            message.getChannel().sendMessage("Такой юзер не найден");
+            DiscordUtils.sendMessage(message, "Такой юзер не найден");
             return;
         }
-        String nick = Degustator.instance().synchronizer.getVimeNick(user.getLongID());
-        if (nick != null) {
-            message.getChannel().sendMessage("Ник юзера `" + getDsName(message.getGuild(), user) + "` на вайме - `" + nick + "`");
-            Degustator.instance().synchronizer.link(message.getGuild(), user, nick);
-        } else {
-            message.getChannel().sendMessage("Юзер `" + getDsName(message.getGuild(), user) + "` не привязан к аккаунту вайма");
-        }
+        synchronizer.getVimeNick(user.getId()).subscribe(username -> {
+            if (username != null && !username.isEmpty()) {
+                synchronizer.getVimeWorldGuild(guild -> {
+                    guild.getMemberById(user.getId()).subscribe(member -> {
+                        DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + username + "`");
+                        synchronizer.update(member, username, true);
+                    });
+                });
+            } else {
+                synchronizer.getVimeWorldGuild(guild -> {
+                    guild.getMemberById(user.getId()).subscribe(member -> {
+                        DiscordUtils.sendMessage(message, "Юзер `" + getDsName(member) + "` не привязан к аккаунту вайма");
+                    });
+                });
+            }
+        });
     }
     
-    private void vimeToDs(IMessage message, String nick) throws Exception {
-        long id = Degustator.instance().synchronizer.getDsId(nick);
-        IUser user = message.getGuild().getUserByID(id);
-        if (user != null) {
-            message.getChannel().sendMessage("Ник юзера `" + getDsName(message.getGuild(), user) + "` на вайме - `" + nick + "`");
-            Degustator.instance().synchronizer.link(message.getGuild(), user, nick);
-        } else {
-            message.getChannel().sendMessage("Ник `" + nick + "` не привязан к дискорду");
-        }
+    private void vimeToDs(Message message, String nick) throws Exception {
+        synchronizer.getDiscordId(nick).subscribe(id -> {
+            if (id != null) {
+                synchronizer.getVimeWorldGuild(guild -> {
+                    guild.getMemberById(id)
+                        .onErrorResume(ignored -> Mono.empty())
+                        .subscribe(member -> {
+                            if (member == null) {
+                                DiscordUtils.sendMessage(message, "Ник юзера `" + id.asString() + "` (ливнул с серва) на вайме - `" + nick + "`");
+                            } else {
+                                DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + nick + "`");
+                                synchronizer.update(member, nick, true);
+                            }
+                        });
+                });
+            } else {
+                DiscordUtils.sendMessage(message, "Ник `" + nick + "` не привязан к дискорду");
+            }
+        });
     }
     
-    private String getDsName(IGuild guild, IUser user) {
-        return user.getDisplayName(guild) + "#" + user.getDiscriminator() + " (" + user.getLongID() + ")";
+    private String getDsName(Member member) {
+        return member.getDisplayName() + "#" + member.getDiscriminator() + " (" + member.getId().asString() + ")";
     }
     
     @Override
-    public boolean canUse(IMessage message) {
-        if (message.getGuild().getLongID() != VimeWorldRankSynchronizer.VIMEWORLD_GUILD_ID)
-            return false;
-        List<IRole> roles = message.getAuthor().getRolesForGuild(message.getGuild());
-        for (IRole role : roles)
-            if (role.getLongID() == DISCORD_MODER_ROLE || role.getLongID() == ADMIN_ROLE)
-                return true;
-        return false;
+    public Mono<Boolean> canUse(Message message) {
+        if (!message.getAuthor().isPresent())
+            return Mono.just(false);
+        return Mono.create(sink -> {
+            message.getAuthorAsMember().subscribe(member -> {
+                if (!member.getGuildId().equals(Synchronizer2.VIMEWORLD_GUILD_ID)) {
+                    sink.success(false);
+                    return;
+                }
+                DiscordUtils.getMemberRoles(member, roles -> {
+                    sink.success(roles.contains(DISCORD_MODER_ROLE) || roles.contains(ADMIN_ROLE));
+                });
+            });
+        });
     }
 }

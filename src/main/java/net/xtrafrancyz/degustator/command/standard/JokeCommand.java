@@ -1,6 +1,6 @@
 package net.xtrafrancyz.degustator.command.standard;
 
-import sx.blah.discord.handle.obj.IMessage;
+import discord4j.core.object.entity.Message;
 
 import net.xtrafrancyz.degustator.command.Command;
 
@@ -123,7 +123,9 @@ public class JokeCommand extends Command {
     }
     
     @Override
-    public void onCommand(IMessage message, String[] args) throws Exception {
-        message.getChannel().sendMessage(JokeCommand.JOKES[ThreadLocalRandom.current().nextInt(JokeCommand.JOKES.length)]);
+    public void onCommand(Message message, String[] args) throws Exception {
+        message.getChannel().subscribe(c ->
+            c.createMessage(JokeCommand.JOKES[ThreadLocalRandom.current().nextInt(JokeCommand.JOKES.length)]).subscribe()
+        );
     }
 }

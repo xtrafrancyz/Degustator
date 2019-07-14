@@ -1,12 +1,12 @@
 package net.xtrafrancyz.degustator.module;
 
-import sx.blah.discord.Discord4J;
-import sx.blah.discord.api.events.EventSubscriber;
-import sx.blah.discord.handle.impl.events.guild.channel.message.MessageEvent;
-import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
-import sx.blah.discord.handle.impl.events.guild.channel.message.MessageUpdateEvent;
-import sx.blah.discord.handle.obj.IChannel;
-import sx.blah.discord.handle.obj.IMessage;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.event.domain.message.MessageUpdateEvent;
+import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.User;
+import discord4j.core.object.util.Snowflake;
 
 import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.Scheduler;
@@ -21,8 +21,6 @@ import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * @author xtrafrancyz
@@ -47,7 +45,7 @@ public class SwearFilter {
             }
         } catch (Exception ex) {
             enabled = false;
-            Discord4J.LOGGER.info("SwearFilter disabled. File 'badwords.txt' not found");
+            System.out.println("SwearFilter disabled. File 'badwords.txt' not found");
             return;
         }
         
@@ -63,33 +61,53 @@ public class SwearFilter {
         } catch (SQLException e) {
             enabled = false;
             e.printStackTrace();
-            Discord4J.LOGGER.info("SwearFilter disabled. Database error");
+            System.out.println("SwearFilter disabled. Database error");
             return;
         }
         
-        degustator.client.getDispatcher().registerListeners(this);
+        degustator.client.getEventDispatcher()
+            .on(MessageUpdateEvent.class).subscribe(this::onMessageUpdate);
+        degustator.client.getEventDispatcher()
+            .on(MessageCreateEvent.class).subscribe(this::onMessageCreate);
     }
     
-    @EventSubscriber
-    public void onMessage(MessageReceivedEvent event) {
-        if (isFilterable(event))
+    public void onMessageCreate(MessageCreateEvent event) {
+        Member member = event.getMember().orElse(null);
+        if (isActive(event.getMessage().getChannelId()) && (member != null && (
+            !isBotUser(member.getId()) && !isGuildOwner(member)
+        ))) {
             checkMessage(event.getMessage());
-    }
-    
-    @EventSubscriber
-    public void onMessageEdit(MessageUpdateEvent event) {
-        if (isFilterable(event))
-            checkMessage(event.getNewMessage());
-    }
-    
-    private void checkMessage(IMessage message) {
-        if (hasSwear(message.getContent())) {
-            try {
-                message.delete();
-                IMessage rs = message.getChannel().sendMessage("**" + message.getAuthor().getDisplayName(message.getGuild()) + "**, пожалуйста, следите за словами.");
-                Scheduler.schedule(rs::delete, 5, TimeUnit.SECONDS);
-            } catch (Exception ignored) {}
         }
+    }
+    
+    public void onMessageUpdate(MessageUpdateEvent event) {
+        if (!event.isContentChanged() || !isActive(event.getChannelId()))
+            return;
+        event.getMessage().subscribe(m -> {
+            User user = m.getAuthor().orElse(null);
+            Snowflake guildId = event.getGuildId().orElse(null);
+            if (user != null && !isBotUser(user.getId()) && !user.getId().equals(guildId)) {
+                checkMessage(m);
+            }
+        });
+    }
+    
+    private void checkMessage(Message message) {
+        message.getContent().ifPresent(content -> {
+            if (hasSwear(content)) {
+                message.delete("Swear detected").subscribe();
+                message.getChannel().subscribe(c -> {
+                    message.getAuthorAsMember().subscribe(member -> {
+                        c.createMessage("**" + member.getDisplayName() + "**, пожалуйста, следите за словами.")
+                            .subscribe(warning -> {
+                                Scheduler.schedule(() -> {
+                                    warning.delete().subscribe();
+                                }, 5, TimeUnit.SECONDS);
+                            });
+                    });
+                });
+            }
+        });
     }
     
     private boolean hasSwear(String message) {
@@ -103,33 +121,38 @@ public class SwearFilter {
         return enabled;
     }
     
-    public boolean isActive(IChannel channel) {
-        return enabledChannels.contains(channel.getLongID());
+    public boolean isActive(Snowflake channel) {
+        return enabledChannels.contains(channel.asLong());
     }
     
-    public boolean isFilterable(MessageEvent event) {
-        return isActive(event.getChannel()) && (!event.getAuthor().equals(event.getGuild().getOwner()) && !event.getAuthor().equals(degustator.client.getOurUser()));
+    public boolean isBotUser(Snowflake member) {
+        return member.equals(degustator.client.getSelfId().orElse(null));
     }
     
-    public void disableFor(IChannel channel) {
+    public boolean isGuildOwner(Member member) {
+        Guild guild = member.getGuild().block();
+        return guild != null && guild.getOwnerId().equals(member.getId());
+    }
+    
+    public void disableFor(Snowflake channel) {
         if (!enabled || !isActive(channel))
             return;
-        enabledChannels.remove(channel.getLongID());
+        enabledChannels.remove(channel.asLong());
         
         try {
-            degustator.mysql.query("DELETE FROM swearfilter WHERE channel = ?", ps -> ps.setLong(1, channel.getLongID()));
+            degustator.mysql.query("DELETE FROM swearfilter WHERE channel = ?", ps -> ps.setLong(1, channel.asLong()));
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
     
-    public void enableFor(IChannel channel) {
+    public void enableFor(Snowflake channel) {
         if (!enabled || isActive(channel))
             return;
-        enabledChannels.add(channel.getLongID());
+        enabledChannels.add(channel.asLong());
         
         try {
-            degustator.mysql.query("INSERT INTO swearfilter (channel) VALUES (?)", ps -> ps.setLong(1, channel.getLongID()));
+            degustator.mysql.query("INSERT INTO swearfilter (channel) VALUES (?)", ps -> ps.setLong(1, channel.asLong()));
         } catch (SQLException e) {
             e.printStackTrace();
         }
