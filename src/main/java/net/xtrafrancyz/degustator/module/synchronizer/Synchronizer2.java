@@ -18,7 +18,6 @@ import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.Scheduler;
 import net.xtrafrancyz.degustator.mysql.Row;
 import net.xtrafrancyz.degustator.mysql.SelectResult;
-import net.xtrafrancyz.degustator.util.DiscordUtils;
 
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -143,57 +142,56 @@ public class Synchronizer2 {
     
     public void update(Member member, String username, boolean writeToDb) {
         Degustator.log.info("Check: " + member.getDisplayName());
-        DiscordUtils.getMemberRoles(member, roles -> {
-            Set<Snowflake> originalRoles = new HashSet<>(roles);
-            List<Consumer<GuildMemberEditSpec>> modifiers = new ArrayList<>();
-            
-            if (!roles.contains(NITRO_BOOSTER_ROLE) && !username.equals(member.getDisplayName())) {
+        Set<Snowflake> roles = member.getRoleIds();
+        Set<Snowflake> originalRoles = new HashSet<>(roles);
+        List<Consumer<GuildMemberEditSpec>> modifiers = new ArrayList<>();
+        
+        if (!roles.contains(NITRO_BOOSTER_ROLE) && !username.equals(member.getDisplayName())) {
+            modifiers.add(spec ->
+                spec.setNickname(username)
+            );
+        }
+        
+        roles.removeIf(AUTOROLES::contains);
+        roles.add(VERIFIED_ROLE);
+        
+        ranks.get(username).thenAccept(rank -> {
+            Snowflake role = RANK_TO_ROLE.get(rank);
+            if (role != null)
+                roles.add(role);
+            if (!originalRoles.equals(roles))
                 modifiers.add(spec ->
-                    spec.setNickname(username)
+                    spec.setRoles(roles)
                 );
-            }
             
-            roles.removeIf(AUTOROLES::contains);
-            roles.add(VERIFIED_ROLE);
+            Runnable dbWrite = !writeToDb ? null : () -> {
+                Scheduler.execute(() -> {
+                    try {
+                        degustator.mysql.query("UPDATE linked SET updated = ?, username = ?, rank = ? WHERE id = ?", ps -> {
+                            ps.setInt(1, (int) (System.currentTimeMillis() / 1000));
+                            ps.setString(2, username);
+                            ps.setString(3, rank);
+                            ps.setLong(4, member.getId().asLong());
+                        });
+                    } catch (SQLException e) {
+                        e.printStackTrace();
+                    }
+                });
+            };
             
-            ranks.get(username).thenAccept(rank -> {
-                Snowflake role = RANK_TO_ROLE.get(rank);
-                if (role != null)
-                    roles.add(role);
-                if (!originalRoles.equals(roles))
-                    modifiers.add(spec ->
-                        spec.setRoles(roles)
-                    );
-                
-                Runnable dbWrite = !writeToDb ? null : () -> {
-                    Scheduler.execute(() -> {
-                        try {
-                            degustator.mysql.query("UPDATE linked SET updated = ?, username = ?, rank = ? WHERE id = ?", ps -> {
-                                ps.setInt(1, (int) (System.currentTimeMillis() / 1000));
-                                ps.setString(2, username);
-                                ps.setString(3, rank);
-                                ps.setLong(4, member.getId().asLong());
-                            });
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                        }
-                    });
-                };
-                
-                if (!modifiers.isEmpty()) {
-                    member.edit(spec -> {
-                        for (Consumer<GuildMemberEditSpec> modifier : modifiers)
-                            modifier.accept(spec);
-                        
-                        Degustator.log.info("User " + member.getUsername() + "#" + member.getDiscriminator() + " updated (" + username + ")");
-                        if (dbWrite != null)
-                            dbWrite.run();
-                    }).subscribe();
-                } else {
+            if (!modifiers.isEmpty()) {
+                member.edit(spec -> {
+                    for (Consumer<GuildMemberEditSpec> modifier : modifiers)
+                        modifier.accept(spec);
+                    
+                    Degustator.log.info("User " + member.getUsername() + "#" + member.getDiscriminator() + " updated (" + username + ")");
                     if (dbWrite != null)
                         dbWrite.run();
-                }
-            });
+                }).subscribe();
+            } else {
+                if (dbWrite != null)
+                    dbWrite.run();
+            }
         });
     }
     
@@ -241,17 +239,16 @@ public class Synchronizer2 {
             guild.getMemberById(id)
                 .onErrorResume(error -> Mono.empty())
                 .subscribe(member -> {
-                    DiscordUtils.getMemberRoles(member, roles -> {
-                        int size = roles.size();
-                        roles.remove(VERIFIED_ROLE);
-                        roles.removeAll(AUTOROLES);
-                        if (size != roles.size()) {
-                            member.edit(spec -> {
-                                spec.setNickname(null);
-                                spec.setRoles(roles);
-                            }).subscribe();
-                        }
-                    });
+                    Set<Snowflake> roles = member.getRoleIds();
+                    int size = roles.size();
+                    roles.remove(VERIFIED_ROLE);
+                    roles.removeAll(AUTOROLES);
+                    if (size != roles.size() || member.getNickname().isPresent()) {
+                        member.edit(spec -> {
+                            spec.setNickname(null);
+                            spec.setRoles(roles);
+                        }).subscribe();
+                    }
                 });
         });
     }

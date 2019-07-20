@@ -127,9 +127,8 @@ public class VimenickCommand extends Command {
                     sink.success(false);
                     return;
                 }
-                DiscordUtils.getMemberRoles(member, roles -> {
-                    sink.success(roles.contains(DISCORD_MODER_ROLE) || roles.contains(ADMIN_ROLE));
-                });
+                Set<Snowflake> roles = member.getRoleIds();
+                sink.success(roles.contains(DISCORD_MODER_ROLE) || roles.contains(ADMIN_ROLE));
             });
         });
     }
