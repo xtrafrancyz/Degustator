@@ -49,9 +49,10 @@ public class VimenickCommand extends Command {
             }
             message.getGuild().subscribe(guild -> {
                 guild.getMemberById(Snowflake.of(userid))
-                    .onErrorResume(ignored -> Mono.empty())
                     .subscribe(u -> {
                         dsToVime(message, u);
+                    }, error -> {
+                        dsToVime(message, null);
                     });
             });
         } else {
@@ -70,37 +71,40 @@ public class VimenickCommand extends Command {
             DiscordUtils.sendMessage(message, "Такой юзер не найден");
             return;
         }
-        synchronizer.getVimeNick(user.getId()).subscribe(username -> {
+        synchronizer.getVimeNick(user.getId()).thenAccept(username -> {
             if (username != null && !username.isEmpty()) {
                 synchronizer.getVimeWorldGuild(guild -> {
-                    guild.getMemberById(user.getId()).subscribe(member -> {
-                        DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + username + "`");
-                        synchronizer.update(member, username, true);
-                    });
+                    guild.getMemberById(user.getId())
+                        .subscribe(member -> {
+                            DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + username + "`");
+                            synchronizer.update(member, username, true);
+                        }, error -> {
+                            DiscordUtils.sendMessage(message, "Какая-то ошибка, я сломался");
+                        });
                 });
             } else {
                 synchronizer.getVimeWorldGuild(guild -> {
-                    guild.getMemberById(user.getId()).subscribe(member -> {
-                        DiscordUtils.sendMessage(message, "Юзер `" + getDsName(member) + "` не привязан к аккаунту вайма");
-                    });
+                    guild.getMemberById(user.getId())
+                        .subscribe(member -> {
+                            DiscordUtils.sendMessage(message, "Юзер `" + getDsName(member) + "` не привязан к аккаунту вайма");
+                        }, error -> {
+                            DiscordUtils.sendMessage(message, "Какая-то ошибка, я сломался");
+                        });
                 });
             }
         });
     }
     
     private void vimeToDs(Message message, String nick) throws Exception {
-        synchronizer.getDiscordId(nick).subscribe(id -> {
+        synchronizer.getDiscordId(nick).thenAccept(id -> {
             if (id != null) {
                 synchronizer.getVimeWorldGuild(guild -> {
                     guild.getMemberById(id)
-                        .onErrorResume(ignored -> Mono.empty())
                         .subscribe(member -> {
-                            if (member == null) {
-                                DiscordUtils.sendMessage(message, "Ник юзера `" + id.asString() + "` (ливнул с серва) на вайме - `" + nick + "`");
-                            } else {
-                                DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + nick + "`");
-                                synchronizer.update(member, nick, true);
-                            }
+                            DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + nick + "`");
+                            synchronizer.update(member, nick, true);
+                        }, error -> {
+                            DiscordUtils.sendMessage(message, "Ник юзера `" + id.asString() + "` (ливнул с серва) на вайме - `" + nick + "`");
                         });
                 });
             } else {

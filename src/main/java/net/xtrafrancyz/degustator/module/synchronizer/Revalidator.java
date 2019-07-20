@@ -1,7 +1,6 @@
 package net.xtrafrancyz.degustator.module.synchronizer;
 
 import discord4j.core.object.util.Snowflake;
-import reactor.core.publisher.Mono;
 
 import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.Scheduler;
@@ -76,7 +75,6 @@ public class Revalidator {
                         UpdatingPlayer player = players.get(entry.getKey());
                         if (player != null && !Objects.equals(player.syncedRank, entry.getValue())) {
                             guild.getMemberById(player.id)
-                                .onErrorResume(ignored -> Mono.empty())
                                 .subscribe(member -> {
                                     if (member == null) {
                                         Scheduler.execute(() -> {
@@ -94,6 +92,8 @@ public class Revalidator {
                                         player.newRank = entry.getValue();
                                     }
                                     //revalidated.add(player);
+                                }, error -> {
+                                    // Юзер не найден
                                 });
                         }
                     }

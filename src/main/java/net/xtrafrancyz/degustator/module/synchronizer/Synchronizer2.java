@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -121,13 +122,15 @@ public class Synchronizer2 {
             User old = event.getOld().orElse(null);
             if (old != null && !old.getUsername().equals(event.getCurrent().getUsername())) {
                 getVimeWorldGuild(guild -> {
-                    guild.getMemberById(event.getCurrent().getId()).subscribe(member -> {
-                        if (member != null) {
-                            usernames.get(member.getId()).thenAccept(username -> {
-                                update(member, username, true);
-                            });
-                        }
-                    });
+                    guild.getMemberById(event.getCurrent().getId())
+                        .onErrorResume(ignored -> Mono.empty())
+                        .subscribe(member -> {
+                            if (member != null) {
+                                usernames.get(member.getId()).thenAccept(username -> {
+                                    update(member, username, true);
+                                });
+                            }
+                        });
                 });
             }
         });
@@ -225,27 +228,31 @@ public class Synchronizer2 {
         }
         
         getVimeWorldGuild(guild -> {
-            guild.getMemberById(id).subscribe(member -> {
-                update(member, username, true);
-            });
+            guild.getMemberById(id)
+                .onErrorResume(error -> Mono.empty())
+                .subscribe(member -> {
+                    update(member, username, true);
+                });
         });
     }
     
     public void unlink(Snowflake id) {
         getVimeWorldGuild(guild -> {
-            guild.getMemberById(id).subscribe(member -> {
-                DiscordUtils.getMemberRoles(member, roles -> {
-                    int size = roles.size();
-                    roles.remove(VERIFIED_ROLE);
-                    roles.removeAll(AUTOROLES);
-                    if (size != roles.size()) {
-                        member.edit(spec -> {
-                            spec.setNickname(null);
-                            spec.setRoles(roles);
-                        }).subscribe();
-                    }
+            guild.getMemberById(id)
+                .onErrorResume(error -> Mono.empty())
+                .subscribe(member -> {
+                    DiscordUtils.getMemberRoles(member, roles -> {
+                        int size = roles.size();
+                        roles.remove(VERIFIED_ROLE);
+                        roles.removeAll(AUTOROLES);
+                        if (size != roles.size()) {
+                            member.edit(spec -> {
+                                spec.setNickname(null);
+                                spec.setRoles(roles);
+                            }).subscribe();
+                        }
+                    });
                 });
-            });
         });
     }
     
@@ -253,25 +260,23 @@ public class Synchronizer2 {
         degustator.client.getGuildById(VIMEWORLD_GUILD_ID).subscribe(consumer);
     }
     
-    public Mono<String> getVimeNick(Snowflake id) {
-        return Mono.create(sink -> {
-            usernames.get(id).thenAccept(sink::success);
-        });
+    public CompletableFuture<String> getVimeNick(Snowflake id) {
+        return usernames.get(id);
     }
     
-    public Mono<Snowflake> getDiscordId(String username) {
-        return Mono.create(sink -> {
-            Scheduler.execute(() -> {
-                try {
-                    SelectResult result = degustator.mysql.select("SELECT id FROM linked WHERE username = ?", ps -> ps.setString(1, username));
-                    if (result.isEmpty())
-                        sink.success(null);
-                    else
-                        sink.success(Snowflake.of(result.getFirst().getLong("id")));
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            });
+    public CompletableFuture<Snowflake> getDiscordId(String username) {
+        CompletableFuture<Snowflake> future = new CompletableFuture<>();
+        Scheduler.execute(() -> {
+            try {
+                SelectResult result = degustator.mysql.select("SELECT id FROM linked WHERE username = ?", ps -> ps.setString(1, username));
+                if (result.isEmpty())
+                    future.complete(null);
+                else
+                    future.complete(Snowflake.of(result.getFirst().getLong("id")));
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         });
+        return future;
     }
 }
