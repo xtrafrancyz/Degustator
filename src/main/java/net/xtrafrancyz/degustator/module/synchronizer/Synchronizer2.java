@@ -163,6 +163,7 @@ public class Synchronizer2 {
                 modifiers.add(spec ->
                     spec.setRoles(roles)
                 );
+            System.out.println("Rank, roles: " + member.getDisplayName() + " " + originalRoles);
             
             Runnable dbWrite = !writeToDb ? null : () -> {
                 Scheduler.execute(() -> {

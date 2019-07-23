@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author xtrafrancyz
@@ -27,11 +28,16 @@ public class RankLoader implements AsyncCacheLoader<String, String> {
             if (ex != null) {
                 future.completeExceptionally(ex);
             } else {
-                JsonArray arr = new JsonParser().parse(body).getAsJsonArray();
-                if (arr.size() == 1)
-                    future.complete(arr.get(0).getAsJsonObject().get("rank").getAsString());
-                else
-                    future.complete("PLAYER");
+                try {
+                    JsonArray arr = new JsonParser().parse(body).getAsJsonArray();
+                    if (arr.size() == 1)
+                        future.complete(arr.get(0).getAsJsonObject().get("rank").getAsString());
+                    else
+                        future.complete("PLAYER");
+                } catch (Exception ex0) {
+                    ex0.printStackTrace();
+                    future.completeExceptionally(ex0);
+                }
             }
         });
         return future;
@@ -55,12 +61,13 @@ public class RankLoader implements AsyncCacheLoader<String, String> {
         }
         if (!list.isEmpty())
             splitted.add(list);
+        AtomicInteger loads = new AtomicInteger(splitted.size());
         for (List<String> load : splitted)
-            load(load, map, future, count);
+            load(load, map, future, loads);
         return future;
     }
     
-    private void load(List<String> list, Map<String, String> saveTo, CompletableFuture<Map<String, String>> future, int needed) {
+    private void load(List<String> list, Map<String, String> saveTo, CompletableFuture<Map<String, String>> future, AtomicInteger loads) {
         HttpUtils.apiGet("/user/name/" + String.join(",", list), (body, ex) -> {
             synchronized (saveTo) {
                 if (future.isCompletedExceptionally())
@@ -72,11 +79,14 @@ public class RankLoader implements AsyncCacheLoader<String, String> {
                 for (JsonElement element : new JsonParser().parse(body).getAsJsonArray()) {
                     JsonObject json = element.getAsJsonObject();
                     String name = json.get("username").getAsString();
+                    if (!list.contains(name))
+                        System.out.println("Username is in wrong case '" + name + "'");
                     saveTo.put(name, json.get("rank").getAsString());
                 }
                 for (String name : list)
                     saveTo.putIfAbsent(name, "PLAYER");
-                if (needed == saveTo.size())
+                //System.out.println(saveTo.size() + " " + needed);
+                if (loads.decrementAndGet() == 0)
                     future.complete(saveTo);
             }
         });

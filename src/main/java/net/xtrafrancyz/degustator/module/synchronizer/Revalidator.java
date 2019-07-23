@@ -76,25 +76,23 @@ public class Revalidator {
                         if (player != null && !Objects.equals(player.syncedRank, entry.getValue())) {
                             guild.getMemberById(player.id)
                                 .subscribe(member -> {
-                                    if (member == null) {
-                                        Scheduler.execute(() -> {
-                                            try {
-                                                degustator.mysql.query("UPDATE linked SET updated = ? WHERE id = ?", ps -> {
-                                                    ps.setInt(1, (int) (System.currentTimeMillis() / 1000) + 60 * 24 * 31);
-                                                    ps.setLong(2, player.id.asLong());
-                                                });
-                                            } catch (SQLException e) {
-                                                e.printStackTrace();
-                                            }
-                                        });
-                                    } else {
-                                        synchronizer.update(member, player.username, true);
-                                        player.newRank = entry.getValue();
-                                    }
-                                    //revalidated.add(player);
+                                    synchronizer.update(member, player.username, true);
                                 }, error -> {
                                     // Юзер не найден
+                                    Scheduler.execute(() -> {
+                                        try {
+                                            degustator.mysql.query("UPDATE linked SET updated = ?, rank = ? WHERE id = ?", ps -> {
+                                                ps.setInt(1, (int) (System.currentTimeMillis() / 1000) + 60 * 60 * 24 * 31);
+                                                ps.setString(2, entry.getValue());
+                                                ps.setLong(3, player.id.asLong());
+                                            });
+                                        } catch (SQLException e) {
+                                            e.printStackTrace();
+                                        }
+                                    });
                                 });
+                        } else {
+                            revalidated.add(player);
                         }
                     }
                 });
@@ -107,16 +105,27 @@ public class Revalidator {
     private void saveRevalidated() {
         if (revalidated.isEmpty())
             return;
+        StringBuilder ids = new StringBuilder(256);
         for (UpdatingPlayer player = revalidated.poll(); player != null; player = revalidated.poll()) {
             // do nothing
+            if (ids.length() > 0)
+                ids.append(',');
+            ids.append(player.id.asString());
         }
+        Scheduler.execute(() -> {
+            try {
+                long time = (int) (System.currentTimeMillis() / 1000) + 60 * 60 * 24;
+                degustator.mysql.query("UPDATE linked SET updated = " + time + " WHERE id IN (" + ids + ")");
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        });
     }
     
     private class UpdatingPlayer {
         public Snowflake id;
         public String username;
         public String syncedRank;
-        public String newRank;
         
         public UpdatingPlayer(Snowflake id, String username, String syncedRank) {
             this.id = id;

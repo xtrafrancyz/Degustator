@@ -43,7 +43,7 @@ public class Degustator {
     private Degustator() throws Exception {
         instance = this;
         readConfig();
-        Scheduler.init(2);
+        Scheduler.init(4);
         
         client = new DiscordClientBuilder(config.token).build();
         client.getEventDispatcher().on(ReadyEvent.class).subscribe(this::onReady);
