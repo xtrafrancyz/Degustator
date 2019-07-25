@@ -77,7 +77,7 @@ public class VimenickCommand extends Command {
                     guild.getMemberById(user.getId())
                         .subscribe(member -> {
                             DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + username + "`");
-                            synchronizer.update(member, username, true);
+                            synchronizer.update("VimeNick", member, username, true);
                         }, error -> {
                             DiscordUtils.sendMessage(message, "Какая-то ошибка, я сломался");
                         });
@@ -102,7 +102,7 @@ public class VimenickCommand extends Command {
                     guild.getMemberById(id)
                         .subscribe(member -> {
                             DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + nick + "`");
-                            synchronizer.update(member, nick, true);
+                            synchronizer.update("VimeNick", member, nick, true);
                         }, error -> {
                             DiscordUtils.sendMessage(message, "Ник юзера `" + id.asString() + "` (ливнул с серва) на вайме - `" + nick + "`");
                         });

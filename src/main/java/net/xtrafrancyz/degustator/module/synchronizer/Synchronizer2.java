@@ -108,7 +108,7 @@ public class Synchronizer2 {
                         ps.setLong(1, event.getMember().getId().asLong())
                     );
                     if (!result.isEmpty())
-                        update(event.getMember(), result.getFirst().getString("username"), true);
+                        update("MemberJoinEvent", event.getMember(), result.getFirst().getString("username"), true);
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
@@ -122,13 +122,11 @@ public class Synchronizer2 {
             if (old != null && !old.getUsername().equals(event.getCurrent().getUsername())) {
                 getVimeWorldGuild(guild -> {
                     guild.getMemberById(event.getCurrent().getId())
-                        .onErrorResume(ignored -> Mono.empty())
                         .subscribe(member -> {
-                            if (member != null) {
-                                usernames.get(member.getId()).thenAccept(username -> {
-                                    update(member, username, true);
-                                });
-                            }
+                            usernames.get(member.getId()).thenAccept(username -> {
+                                update("UserUpdateEvent", member, username, true);
+                            });
+                        }, error -> {
                         });
                 });
             }
@@ -136,12 +134,23 @@ public class Synchronizer2 {
         
         // Меняются ник в гильдии или роли
         degustator.client.getEventDispatcher().on(MemberUpdateEvent.class).subscribe(event -> {
-            
+            if (!event.getGuildId().equals(VIMEWORLD_GUILD_ID))
+                return;
+            event.getMember().subscribe(member -> {
+                if (member.isBot())
+                    return;
+                usernames.get(member.getId()).thenAccept(username -> {
+                    if (username.equals("") || member.getDisplayName().equals(username))
+                        return;
+                    update("MemberUpdateEvent", member, username, true);
+                });
+            }, error -> {
+            });
         });
     }
     
-    public void update(Member member, String username, boolean writeToDb) {
-        Degustator.log.info("Check: " + member.getDisplayName());
+    public void update(String caller, Member member, String username, boolean writeToDb) {
+        Degustator.log.info("Check (" + caller + "): " + member.getDisplayName() + "#" + member.getDiscriminator());
         Set<Snowflake> roles = member.getRoleIds();
         Set<Snowflake> originalRoles = new HashSet<>(roles);
         List<Consumer<GuildMemberEditSpec>> modifiers = new ArrayList<>();
@@ -163,7 +172,6 @@ public class Synchronizer2 {
                 modifiers.add(spec ->
                     spec.setRoles(roles)
                 );
-            System.out.println("Rank, roles: " + member.getDisplayName() + " " + originalRoles);
             
             Runnable dbWrite = !writeToDb ? null : () -> {
                 Scheduler.execute(() -> {
@@ -230,7 +238,7 @@ public class Synchronizer2 {
             guild.getMemberById(id)
                 .onErrorResume(error -> Mono.empty())
                 .subscribe(member -> {
-                    update(member, username, true);
+                    update("Link", member, username, true);
                 });
         });
     }

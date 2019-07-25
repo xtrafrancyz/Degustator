@@ -76,7 +76,7 @@ public class Revalidator {
                         if (player != null && !Objects.equals(player.syncedRank, entry.getValue())) {
                             guild.getMemberById(player.id)
                                 .subscribe(member -> {
-                                    synchronizer.update(member, player.username, true);
+                                    synchronizer.update("Revalidator", member, player.username, true);
                                 }, error -> {
                                     // Юзер не найден
                                     Scheduler.execute(() -> {
