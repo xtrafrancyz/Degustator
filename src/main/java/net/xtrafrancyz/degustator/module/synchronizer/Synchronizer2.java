@@ -150,7 +150,7 @@ public class Synchronizer2 {
     }
     
     public void update(String caller, Member member, String username, boolean writeToDb) {
-        Degustator.log.info("Check (" + caller + "): " + member.getDisplayName() + "#" + member.getDiscriminator());
+        Degustator.log.info("Check (" + caller + "): " + username + " => " + member.getDisplayName() + "#" + member.getDiscriminator());
         Set<Snowflake> roles = member.getRoleIds();
         Set<Snowflake> originalRoles = new HashSet<>(roles);
         List<Consumer<GuildMemberEditSpec>> modifiers = new ArrayList<>();
@@ -174,6 +174,7 @@ public class Synchronizer2 {
                 );
             
             Runnable dbWrite = !writeToDb ? null : () -> {
+                usernames.put(member.getId(), CompletableFuture.completedFuture(username));
                 Scheduler.execute(() -> {
                     try {
                         degustator.mysql.query("UPDATE linked SET updated = ?, username = ?, rank = ? WHERE id = ?", ps -> {
@@ -183,7 +184,7 @@ public class Synchronizer2 {
                             ps.setLong(4, member.getId().asLong());
                         });
                     } catch (SQLException e) {
-                        e.printStackTrace();
+                        Degustator.log.warn("Could not update user", e);
                     }
                 });
             };
