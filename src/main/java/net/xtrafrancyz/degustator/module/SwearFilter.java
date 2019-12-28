@@ -24,7 +24,7 @@ import java.util.Set;
  */
 public class SwearFilter {
     private final Degustator degustator;
-    private final Set<Long> enabledChannels;
+    private final Set<Snowflake> enabledChannels;
     private final Set<String> badWords;
     private boolean enabled = true;
     
@@ -54,7 +54,7 @@ public class SwearFilter {
             
             SelectResult result = degustator.mysql.select("SELECT channel FROM swearfilter");
             for (Row row : result.getRows())
-                enabledChannels.add(row.getLong(0));
+                enabledChannels.add(Snowflake.of(row.getLong(0)));
         } catch (SQLException e) {
             enabled = false;
             Degustator.log.warn("SwearFilter disabled. Database error", e);
@@ -111,13 +111,13 @@ public class SwearFilter {
     }
     
     public boolean isActive(Snowflake channel) {
-        return enabledChannels.contains(channel.asLong());
+        return enabledChannels.contains(channel);
     }
     
     public void disableFor(Snowflake channel) {
         if (!enabled || !isActive(channel))
             return;
-        enabledChannels.remove(channel.asLong());
+        enabledChannels.remove(channel);
         
         try {
             degustator.mysql.query("DELETE FROM swearfilter WHERE channel = ?", ps -> ps.setLong(1, channel.asLong()));
@@ -129,7 +129,7 @@ public class SwearFilter {
     public void enableFor(Snowflake channel) {
         if (!enabled || isActive(channel))
             return;
-        enabledChannels.add(channel.asLong());
+        enabledChannels.add(channel);
         
         try {
             degustator.mysql.query("INSERT INTO swearfilter (channel) VALUES (?)", ps -> ps.setLong(1, channel.asLong()));
@@ -139,8 +139,6 @@ public class SwearFilter {
     }
     
     private static String normalizeWord(String str) {
-        if (str.isEmpty())
-            return "";
         char[] chars = str.toCharArray();
         int len = chars.length;
         int st = 0;
@@ -148,16 +146,30 @@ public class SwearFilter {
             st++;
         while (st < len && !Character.isAlphabetic(chars[len - 1]))
             len--;
-        str = ((st > 0) || (len < chars.length)) ? str.substring(st, len) : str;
-        return str.toLowerCase()
-            .replace('a', 'а')
-            .replace('e', 'е')
-            .replace('э', 'е')
-            .replace('ё', 'е')
-            .replace('y', 'у')
-            .replace('p', 'р')
-            .replace('x', 'х')
-            .replace('o', 'о')
-            .replace('c', 'с');
+        boolean changed = false;
+        for (int i = st; i < len; i++) {
+            char old = chars[i];
+            char c = Character.toLowerCase(old);
+            switch (c) {
+                // @formatter:off
+                case '6': chars[i] = 'б'; break;
+                case 'a': chars[i] = 'а'; break;
+                case 'e':
+                case 'э':
+                case 'ё': chars[i] = 'е'; break;
+                case 'y': chars[i] = 'у'; break;
+                case 'p': chars[i] = 'р'; break;
+                case 'x': chars[i] = 'х'; break;
+                case 'o': chars[i] = 'о'; break;
+                case 'c': chars[i] = 'с'; break;
+                default: chars[i] = c;
+                // @formatter:on
+            }
+            if (old != c)
+                changed = true;
+        }
+        if (changed || st != 0 || len != chars.length)
+            return new String(chars, st, len - st);
+        return str;
     }
 }
