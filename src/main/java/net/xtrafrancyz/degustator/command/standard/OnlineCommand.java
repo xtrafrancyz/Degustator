@@ -40,7 +40,7 @@ public class OnlineCommand extends Command {
                 return;
             }
             List<String> moders = new ArrayList<>(10);
-            for (JsonElement elem : new JsonParser().parse(response).getAsJsonArray()) {
+            for (JsonElement elem : JsonParser.parseString(response).getAsJsonArray()) {
                 JsonObject player = elem.getAsJsonObject();
                 String rank = player.get("rank").getAsString();
                 if (MODER_RANKS.contains(rank))

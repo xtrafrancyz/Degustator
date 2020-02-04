@@ -19,7 +19,7 @@ import net.xtrafrancyz.degustator.command.standard.HelpCommand;
 import net.xtrafrancyz.degustator.command.standard.JokeCommand;
 import net.xtrafrancyz.degustator.command.standard.OnlineCommand;
 import net.xtrafrancyz.degustator.module.SwearFilter;
-import net.xtrafrancyz.degustator.module.synchronizer.Synchronizer2;
+import net.xtrafrancyz.degustator.module.synchronizer.Synchronizer;
 import net.xtrafrancyz.degustator.mysql.MysqlPool;
 
 import java.io.File;
@@ -37,7 +37,7 @@ public class Degustator {
     public final MysqlPool mysql;
     
     private final CommandManager commandManager;
-    public final Synchronizer2 synchronizer;
+    public final Synchronizer synchronizer;
     public final SwearFilter swearFilter;
     
     private Degustator() throws Exception {
@@ -51,7 +51,7 @@ public class Degustator {
         
         mysql = new MysqlPool(this);
         
-        synchronizer = new Synchronizer2(this);
+        synchronizer = new Synchronizer(this);
         swearFilter = new SwearFilter(this);
         
         commandManager = new CommandManager(this);

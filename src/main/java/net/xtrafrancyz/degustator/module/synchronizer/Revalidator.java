@@ -23,13 +23,13 @@ import java.util.concurrent.TimeUnit;
  */
 public class Revalidator {
     private final Degustator degustator;
-    private final Synchronizer2 synchronizer;
+    private final Synchronizer synchronizer;
     
     private int revalidatorTask = -1;
     private int revalidatorSaverTask = -1;
     private Queue<UpdatingPlayer> revalidated = new ConcurrentLinkedQueue<>();
     
-    public Revalidator(Degustator degustator, Synchronizer2 synchronizer) {
+    public Revalidator(Degustator degustator, Synchronizer synchronizer) {
         this.degustator = degustator;
         this.synchronizer = synchronizer;
     }
@@ -66,14 +66,17 @@ public class Revalidator {
                 String username = row.getString("username");
                 String rank = row.getString("rank");
                 synchronizer.usernames.put(id, CompletableFuture.completedFuture(username));
-                players.put(username, new UpdatingPlayer(id, username, rank));
-                nicknames.add(username);
+                String lower = username.toLowerCase();
+                players.put(lower, new UpdatingPlayer(id, username, rank));
+                nicknames.add(lower);
             }
-            synchronizer.ranks.getAll(nicknames).thenAccept(ranks -> {
+            synchronizer.vimeApi.getAll(nicknames).thenAccept(vimeApiPlayerMap -> {
                 synchronizer.getVimeWorldGuild(guild -> {
-                    for (Map.Entry<String, String> entry : ranks.entrySet()) {
+                    for (Map.Entry<String, VimeApiPlayer> entry : vimeApiPlayerMap.entrySet()) {
                         UpdatingPlayer player = players.get(entry.getKey());
-                        if (player != null && !Objects.equals(player.syncedRank, entry.getValue())) {
+                        if (player != null &&
+                            (!Objects.equals(player.syncedRank, entry.getValue().rank) ||
+                                !Objects.equals(player.username, entry.getValue().username))) {
                             guild.getMemberById(player.id)
                                 .subscribe(member -> {
                                     synchronizer.update("Revalidator", member, player.username, true);
@@ -83,7 +86,7 @@ public class Revalidator {
                                         try {
                                             degustator.mysql.query("UPDATE linked SET updated = ?, rank = ? WHERE id = ?", ps -> {
                                                 ps.setInt(1, (int) (System.currentTimeMillis() / 1000) + 60 * 60 * 24 * 31);
-                                                ps.setString(2, entry.getValue());
+                                                ps.setString(2, entry.getValue().rank);
                                                 ps.setLong(3, player.id.asLong());
                                             });
                                         } catch (SQLException e) {
@@ -122,7 +125,7 @@ public class Revalidator {
         });
     }
     
-    private class UpdatingPlayer {
+    private static class UpdatingPlayer {
         public Snowflake id;
         public String username;
         public String syncedRank;

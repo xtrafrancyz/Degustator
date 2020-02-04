@@ -8,7 +8,7 @@ import reactor.core.publisher.Mono;
 
 import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.command.Command;
-import net.xtrafrancyz.degustator.module.synchronizer.Synchronizer2;
+import net.xtrafrancyz.degustator.module.synchronizer.Synchronizer;
 import net.xtrafrancyz.degustator.util.DiscordUtils;
 
 import java.util.Set;
@@ -20,7 +20,7 @@ public class VimenickCommand extends Command {
     private static final Snowflake DISCORD_MODER_ROLE = Snowflake.of(344881335401316356L);
     private static final Snowflake ADMIN_ROLE = Snowflake.of(106117738677665792L);
     
-    private Synchronizer2 synchronizer = Degustator.instance().synchronizer;
+    private Synchronizer synchronizer = Degustator.instance().synchronizer;
     
     public VimenickCommand() {
         super("vimenick",
@@ -96,15 +96,15 @@ public class VimenickCommand extends Command {
     }
     
     private void vimeToDs(Message message, String nick) throws Exception {
-        synchronizer.getDiscordId(nick).thenAccept(id -> {
-            if (id != null) {
+        synchronizer.getDiscordId(nick).thenAccept(resp -> {
+            if (resp != null) {
                 synchronizer.getVimeWorldGuild(guild -> {
-                    guild.getMemberById(id)
+                    guild.getMemberById(resp.id)
                         .subscribe(member -> {
-                            DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + nick + "`");
-                            synchronizer.update("VimeNick", member, nick, true);
+                            DiscordUtils.sendMessage(message, "Ник юзера `" + getDsName(member) + "` на вайме - `" + resp.nick + "`");
+                            synchronizer.update("VimeNick", member, resp.nick, true);
                         }, error -> {
-                            DiscordUtils.sendMessage(message, "Ник юзера `" + id.asString() + "` (ливнул с серва) на вайме - `" + nick + "`");
+                            DiscordUtils.sendMessage(message, "Ник юзера `" + resp.id.asString() + "` (ливнул с серва) на вайме - `" + resp.nick + "`");
                         });
                 });
             } else {
@@ -123,7 +123,7 @@ public class VimenickCommand extends Command {
             return Mono.just(false);
         return Mono.create(sink -> {
             message.getAuthorAsMember().subscribe(member -> {
-                if (!member.getGuildId().equals(Synchronizer2.VIMEWORLD_GUILD_ID)) {
+                if (!member.getGuildId().equals(Synchronizer.VIMEWORLD_GUILD_ID)) {
                     sink.success(false);
                     return;
                 }
