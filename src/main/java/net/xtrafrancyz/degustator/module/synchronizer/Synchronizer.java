@@ -245,6 +245,7 @@ public class Synchronizer {
     }
     
     public void unlink(Snowflake id) {
+        usernames.synchronous().invalidate(id);
         getVimeWorldGuild(guild -> {
             guild.getMemberById(id)
                 .onErrorResume(error -> Mono.empty())
