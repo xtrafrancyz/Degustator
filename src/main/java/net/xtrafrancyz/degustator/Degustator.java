@@ -3,8 +3,7 @@ package net.xtrafrancyz.degustator;
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonWriter;
 import discord4j.core.DiscordClient;
-import discord4j.core.DiscordClientBuilder;
-import discord4j.core.event.domain.lifecycle.ReadyEvent;
+import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.presence.Activity;
 import discord4j.core.object.presence.Presence;
@@ -33,7 +32,7 @@ public class Degustator {
     
     public final Gson gson = new Gson();
     public Config config;
-    public final DiscordClient client;
+    public final GatewayDiscordClient gateway;
     public final MysqlPool mysql;
     
     private final CommandManager commandManager;
@@ -45,9 +44,10 @@ public class Degustator {
         readConfig();
         Scheduler.init(4);
         
-        client = new DiscordClientBuilder(config.token).build();
-        client.getEventDispatcher().on(ReadyEvent.class).subscribe(this::onReady);
-        client.getEventDispatcher().on(MessageCreateEvent.class).subscribe(this::onMessage);
+        DiscordClient client = DiscordClient.create(config.token);
+        gateway = client.gateway()
+            .setInitialStatus(s -> Presence.online(Activity.watching("!help")))
+            .login().block();
         
         mysql = new MysqlPool(this);
         
@@ -64,7 +64,9 @@ public class Degustator {
         
         new WebServer(this).start();
         
-        client.login().block();
+        gateway.on(MessageCreateEvent.class).subscribe(this::onMessage);
+        
+        gateway.onDisconnect().block();
     }
     
     private void readConfig() throws IOException {
@@ -90,15 +92,10 @@ public class Degustator {
         }
     }
     
-    public void onReady(ReadyEvent event) {
-        event.getClient().updatePresence(Presence.online(Activity.watching("прон | !help")));
-    }
-    
     public void onMessage(MessageCreateEvent event) {
-        event.getMessage().getContent().ifPresent(content -> {
-            if (content.startsWith("!"))
-                commandManager.process(event.getMessage());
-        });
+        String content = event.getMessage().getContent();
+        if (content.startsWith("!"))
+            commandManager.process(event.getMessage());
     }
     
     public static void main(String[] args) throws Exception {

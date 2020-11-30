@@ -1,6 +1,6 @@
 package net.xtrafrancyz.degustator.module.synchronizer;
 
-import discord4j.core.object.util.Snowflake;
+import discord4j.common.util.Snowflake;
 
 /**
  * @author xtrafrancyz

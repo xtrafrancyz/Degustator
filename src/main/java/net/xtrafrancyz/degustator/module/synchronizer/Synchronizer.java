@@ -2,6 +2,7 @@ package net.xtrafrancyz.degustator.module.synchronizer;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.UserUpdateEvent;
 import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.event.domain.guild.GuildDeleteEvent;
@@ -10,7 +11,6 @@ import discord4j.core.event.domain.guild.MemberUpdateEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.User;
-import discord4j.core.object.util.Snowflake;
 import discord4j.core.spec.GuildMemberEditSpec;
 import reactor.core.publisher.Mono;
 
@@ -71,7 +71,7 @@ public class Synchronizer {
             .buildAsync(new RankLoader());
         revalidator = new Revalidator(degustator, this);
         
-        degustator.client.getEventDispatcher().on(GuildCreateEvent.class).subscribe(event -> {
+        degustator.gateway.on(GuildCreateEvent.class).subscribe(event -> {
             if (event.getGuild().getId().equals(VIMEWORLD_GUILD_ID)) {
                 if (!revalidator.isRunning()) {
                     try {
@@ -94,14 +94,14 @@ public class Synchronizer {
             }
         });
         
-        degustator.client.getEventDispatcher().on(GuildDeleteEvent.class).subscribe(event -> {
+        degustator.gateway.on(GuildDeleteEvent.class).subscribe(event -> {
             if (event.getGuildId().equals(VIMEWORLD_GUILD_ID)) {
                 revalidator.stop();
                 inVimeWorldGuild = false;
             }
         });
         
-        degustator.client.getEventDispatcher().on(MemberJoinEvent.class).subscribe(event -> {
+        degustator.gateway.on(MemberJoinEvent.class).subscribe(event -> {
             if (event.getGuildId().equals(VIMEWORLD_GUILD_ID)) {
                 try {
                     SelectResult result = degustator.mysql.select("SELECT * FROM linked WHERE id = ?", ps ->
@@ -115,7 +115,7 @@ public class Synchronizer {
             }
         });
         
-        degustator.client.getEventDispatcher().on(UserUpdateEvent.class).subscribe(event -> {
+        degustator.gateway.on(UserUpdateEvent.class).subscribe(event -> {
             if (event.getCurrent().isBot() || !inVimeWorldGuild)
                 return;
             User old = event.getOld().orElse(null);
@@ -133,7 +133,7 @@ public class Synchronizer {
         });
         
         // Меняются ник в гильдии или роли
-        degustator.client.getEventDispatcher().on(MemberUpdateEvent.class).subscribe(event -> {
+        degustator.gateway.on(MemberUpdateEvent.class).subscribe(event -> {
             if (!event.getGuildId().equals(VIMEWORLD_GUILD_ID))
                 return;
             event.getMember().subscribe(member -> {
@@ -265,7 +265,7 @@ public class Synchronizer {
     }
     
     public void getVimeWorldGuild(Consumer<Guild> consumer) {
-        degustator.client.getGuildById(VIMEWORLD_GUILD_ID).subscribe(consumer);
+        degustator.gateway.getGuildById(VIMEWORLD_GUILD_ID).subscribe(consumer);
     }
     
     public CompletableFuture<String> getVimeNick(Snowflake id) {

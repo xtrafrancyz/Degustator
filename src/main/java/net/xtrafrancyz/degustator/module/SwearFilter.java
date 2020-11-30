@@ -1,10 +1,10 @@
 package net.xtrafrancyz.degustator.module;
 
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.core.object.entity.Message;
-import discord4j.core.object.entity.MessageChannel;
-import discord4j.core.object.util.Snowflake;
+import discord4j.core.object.entity.channel.MessageChannel;
 
 import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.mysql.Row;
@@ -61,19 +61,17 @@ public class SwearFilter {
             return;
         }
         
-        degustator.client.getEventDispatcher()
-            .on(MessageUpdateEvent.class).subscribe(this::onMessageUpdate);
-        degustator.client.getEventDispatcher()
-            .on(MessageCreateEvent.class).subscribe(this::onMessageCreate);
+        degustator.gateway.on(MessageUpdateEvent.class).subscribe(this::onMessageUpdate);
+        degustator.gateway.on(MessageCreateEvent.class).subscribe(this::onMessageCreate);
     }
     
     public void onMessageCreate(MessageCreateEvent event) {
         if (event.getMember().isPresent()
-            && event.getMessage().getContent().isPresent()
+            && !event.getMessage().getContent().isEmpty()
             && event.getMessage().getAuthor().isPresent()
             && !event.getMessage().getAuthor().get().isBot()
             && isActive(event.getMessage().getChannelId())
-            && hasSwear(event.getMessage().getContent().get())) {
+            && hasSwear(event.getMessage().getContent())) {
             event.getMessage().getChannel().subscribe(c -> deleteMessage(c, event.getMessage()));
         }
     }
@@ -82,9 +80,7 @@ public class SwearFilter {
         if (event.isContentChanged() && isActive(event.getChannelId())) {
             event.getMessage()
                 .filter(m -> m.getAuthor().isPresent() && !m.getAuthor().get().isBot())
-                .filter(m -> m.getContent()
-                    .filter(this::hasSwear)
-                    .isPresent())
+                .filter(m -> hasSwear(m.getContent()))
                 .zipWith(event.getChannel())
                 .subscribe(t -> deleteMessage(t.getT2(), t.getT1()));
         }

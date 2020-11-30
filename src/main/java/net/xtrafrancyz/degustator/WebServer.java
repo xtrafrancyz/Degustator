@@ -3,7 +3,7 @@ package net.xtrafrancyz.degustator;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import discord4j.core.object.util.Snowflake;
+import discord4j.common.util.Snowflake;
 
 import java.io.IOException;
 import java.io.OutputStream;

@@ -1,6 +1,7 @@
 package net.xtrafrancyz.degustator.util;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpRequestBase;
@@ -17,7 +18,7 @@ import java.util.concurrent.TimeUnit;
  * @author xtrafrancyz
  */
 public class HttpUtils {
-    public static final org.apache.http.client.HttpClient HTTP_CLIENT = HttpClientBuilder.create()
+    public static final HttpClient HTTP_CLIENT = HttpClientBuilder.create()
         .setConnectionTimeToLive(1, TimeUnit.MINUTES)
         .setMaxConnPerRoute(3) // default 2
         .setMaxConnTotal(20) // default 20

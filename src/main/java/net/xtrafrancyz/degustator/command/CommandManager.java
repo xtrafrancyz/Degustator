@@ -36,7 +36,7 @@ public class CommandManager {
     }
     
     public void process(Message message) {
-        String text = message.getContent().orElse("!").substring(1);
+        String text = message.getContent().substring(1);
         String[] args = text.split(" ");
         Command command = getCommand(args[0].toLowerCase());
         if (command == null)

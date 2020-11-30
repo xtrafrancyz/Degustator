@@ -1,7 +1,7 @@
 package net.xtrafrancyz.degustator.module.synchronizer;
 
 import com.github.benmanes.caffeine.cache.AsyncCacheLoader;
-import discord4j.core.object.util.Snowflake;
+import discord4j.common.util.Snowflake;
 
 import net.xtrafrancyz.degustator.Degustator;
 import net.xtrafrancyz.degustator.mysql.SelectResult;
