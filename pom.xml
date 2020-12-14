@@ -6,7 +6,7 @@
 
     <groupId>net.xtrafrancyz</groupId>
     <artifactId>Degustator</artifactId>
-    <version>0.5.3</version>
+    <version>0.5.4</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -54,7 +54,7 @@
         <dependency>
             <groupId>com.discord4j</groupId>
             <artifactId>discord4j-core</artifactId>
-            <version>3.1.2</version>
+            <version>3.1.3</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
