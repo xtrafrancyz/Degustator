@@ -5,8 +5,9 @@ import com.google.gson.stream.JsonWriter;
 import discord4j.core.DiscordClient;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.message.MessageCreateEvent;
-import discord4j.core.object.presence.Activity;
-import discord4j.core.object.presence.Presence;
+import discord4j.core.retriever.EntityRetrievalStrategy;
+import discord4j.gateway.intent.Intent;
+import discord4j.gateway.intent.IntentSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +47,12 @@ public class Degustator {
         
         DiscordClient client = DiscordClient.create(config.token);
         gateway = client.gateway()
-            .setInitialStatus(s -> Presence.online(Activity.watching("!help")))
+            .setEntityRetrievalStrategy(EntityRetrievalStrategy.REST)
+            .setEnabledIntents(IntentSet.of(
+                Intent.GUILD_MESSAGES,
+                Intent.GUILD_MEMBERS,
+                Intent.GUILDS
+            ))
             .login().block();
         
         mysql = new MysqlPool(this);
