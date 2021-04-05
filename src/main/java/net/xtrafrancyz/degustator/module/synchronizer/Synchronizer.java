@@ -45,6 +45,7 @@ public class Synchronizer {
         RANK_TO_ROLE.put("MODER", Snowflake.of(106123456122212352L));
         RANK_TO_ROLE.put("DEV", Snowflake.of(291284899263152128L));
         RANK_TO_ROLE.put("BUILDER", Snowflake.of(163050681266077696L));
+        RANK_TO_ROLE.put("SRBUILDER", Snowflake.of(163050681266077696L));
         RANK_TO_ROLE.put("MAPLEAD", Snowflake.of(163050681266077696L));
         RANK_TO_ROLE.put("YOUTUBE", Snowflake.of(299093535007703050L));
         RANK_TO_ROLE.put("VIP", Snowflake.of(342269106466324482L));
