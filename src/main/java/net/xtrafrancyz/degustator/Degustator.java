@@ -45,15 +45,16 @@ public class Degustator {
         readConfig();
         Scheduler.init(4);
         
-        DiscordClient client = DiscordClient.create(config.token);
-        gateway = client.gateway()
+        gateway = DiscordClient.create(config.token)
+            .gateway()
             .setEntityRetrievalStrategy(EntityRetrievalStrategy.REST)
             .setEnabledIntents(IntentSet.of(
                 Intent.GUILD_MESSAGES,
                 Intent.GUILD_MEMBERS,
                 Intent.GUILDS
             ))
-            .login().block();
+            .login()
+            .block();
         
         mysql = new MysqlPool(this);
         

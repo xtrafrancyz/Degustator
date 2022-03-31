@@ -37,6 +37,7 @@ public class Synchronizer {
     public static final Snowflake VIMEWORLD_GUILD_ID = Snowflake.of(105720432073666560L);
     private static final Snowflake VERIFIED_ROLE = Snowflake.of(342269949852778497L);
     private static final Snowflake NITRO_BOOSTER_ROLE = Snowflake.of(585532209121853455L);
+    private static final Snowflake DISCORD_MODER_ROLE = Snowflake.of(344881335401316356L);
     private static final Map<String, Snowflake> RANK_TO_ROLE = new HashMap<>();
     private static final Set<Snowflake> AUTOROLES = new HashSet<>();
     
@@ -155,14 +156,16 @@ public class Synchronizer {
         vimeApi.get(username.toLowerCase()).thenAccept(vimeApiPlayer -> {
             Set<Snowflake> roles = member.getRoleIds();
             Set<Snowflake> originalRoles = new HashSet<>(roles);
-            List<Consumer<GuildMemberEditSpec>> modifiers = new ArrayList<>();
+            List<Consumer<GuildMemberEditSpec.Builder>> modifiers = new ArrayList<>();
             
             roles.removeIf(AUTOROLES::contains);
             roles.add(VERIFIED_ROLE);
             
-            if (!roles.contains(NITRO_BOOSTER_ROLE) && !vimeApiPlayer.username.equals(member.getDisplayName())) {
+            if (!roles.contains(NITRO_BOOSTER_ROLE) &&
+                !roles.contains(DISCORD_MODER_ROLE) &&
+                !vimeApiPlayer.username.equals(member.getDisplayName())) {
                 modifiers.add(spec ->
-                    spec.setNickname(vimeApiPlayer.username)
+                    spec.nicknameOrNull(vimeApiPlayer.username)
                 );
             }
             
@@ -171,7 +174,7 @@ public class Synchronizer {
                 roles.add(role);
             if (!originalRoles.equals(roles))
                 modifiers.add(spec ->
-                    spec.setRoles(roles)
+                    spec.roles(roles)
                 );
             
             Runnable dbWrite = !writeToDb ? null : () -> {
@@ -191,18 +194,14 @@ public class Synchronizer {
             };
             
             if (!modifiers.isEmpty()) {
-                member.edit(spec -> {
-                    for (Consumer<GuildMemberEditSpec> modifier : modifiers)
-                        modifier.accept(spec);
-                    
-                    Degustator.log.info("User " + member.getUsername() + "#" + member.getDiscriminator() + " updated (" + vimeApiPlayer.username + ")");
-                    if (dbWrite != null)
-                        dbWrite.run();
-                }).subscribe();
-            } else {
-                if (dbWrite != null)
-                    dbWrite.run();
+                GuildMemberEditSpec.Builder builder = GuildMemberEditSpec.builder();
+                for (Consumer<GuildMemberEditSpec.Builder> modifier : modifiers)
+                    modifier.accept(builder);
+                Degustator.log.info("User " + member.getUsername() + "#" + member.getDiscriminator() + " updated (" + vimeApiPlayer.username + ")");
+                member.edit(builder.build()).subscribe();
             }
+            if (dbWrite != null)
+                dbWrite.run();
         });
     }
     

@@ -67,7 +67,9 @@ public class OnlineCommand extends Command {
     @Override
     public void onCommand(Message message, String[] args) throws Exception {
         content.subscribe(text -> {
-            message.getChannel().subscribe(c -> c.createMessage(text).subscribe());
+            message.getChannel()
+                .map(c -> c.createMessage(text))
+                .subscribe();
         });
     }
 }

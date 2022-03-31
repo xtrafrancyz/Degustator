@@ -11,6 +11,7 @@ import net.xtrafrancyz.degustator.command.Command;
 import net.xtrafrancyz.degustator.module.synchronizer.Synchronizer;
 import net.xtrafrancyz.degustator.util.DiscordUtils;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -34,7 +35,7 @@ public class VimenickCommand extends Command {
             usage(message);
             return;
         }
-        Set<Snowflake> mentions = message.getUserMentionIds();
+        List<Snowflake> mentions = message.getUserMentionIds();
         if (mentions.isEmpty()) {
             if (args[0].startsWith("$")) {
                 vimeToDs(message, args[0].substring(1));
@@ -56,9 +57,8 @@ public class VimenickCommand extends Command {
                     });
             });
         } else {
-            message.getUserMentions().subscribe(u -> {
+            for (User u: message.getUserMentions())
                 dsToVime(message, u);
-            });
         }
     }
     
