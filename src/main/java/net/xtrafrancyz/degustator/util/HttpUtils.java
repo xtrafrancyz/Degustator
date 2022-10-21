@@ -46,7 +46,7 @@ public class HttpUtils {
             try {
                 response = HTTP_CLIENT.execute(request);
                 body = EntityUtils.toString(response.getEntity());
-            } catch (IOException ex) {
+            } catch (Throwable ex) {
                 callback.accept(null, ex);
                 return;
             } finally {

@@ -37,7 +37,6 @@ public class RankLoader implements AsyncCacheLoader<String, VimeApiPlayer> {
                         future.complete(new VimeApiPlayer(username, "PLAYER"));
                     }
                 } catch (Exception ex0) {
-                    ex0.printStackTrace();
                     future.completeExceptionally(ex0);
                 }
             }
@@ -70,21 +69,24 @@ public class RankLoader implements AsyncCacheLoader<String, VimeApiPlayer> {
     private void load(List<String> list, Map<String, VimeApiPlayer> saveTo, CompletableFuture<Map<String, VimeApiPlayer>> future, AtomicInteger loads) {
         HttpUtils.apiGet("/user/name/" + String.join(",", list), (body, ex) -> {
             synchronized (saveTo) {
-                if (future.isCompletedExceptionally())
-                    return;
-                if (ex != null) {
-                    future.completeExceptionally(ex);
-                    return;
+                try {
+                    if (future.isCompletedExceptionally())
+                        return;
+                    if (ex != null) {
+                        future.completeExceptionally(ex);
+                        return;
+                    }
+                    for (JsonElement element : JsonParser.parseString(body).getAsJsonArray()) {
+                        JsonObject json = element.getAsJsonObject();
+                        String name = json.get("username").getAsString();
+                        saveTo.put(name.toLowerCase(), new VimeApiPlayer(name, json.get("rank").getAsString()));
+                    }
+                    for (String name : list)
+                        saveTo.putIfAbsent(name, new VimeApiPlayer(name, "PLAYER"));
+                } finally {
+                    if (loads.decrementAndGet() == 0)
+                        future.complete(saveTo);
                 }
-                for (JsonElement element : JsonParser.parseString(body).getAsJsonArray()) {
-                    JsonObject json = element.getAsJsonObject();
-                    String name = json.get("username").getAsString();
-                    saveTo.put(name.toLowerCase(), new VimeApiPlayer(name, json.get("rank").getAsString()));
-                }
-                for (String name : list)
-                    saveTo.putIfAbsent(name, new VimeApiPlayer(name, "PLAYER"));
-                if (loads.decrementAndGet() == 0)
-                    future.complete(saveTo);
             }
         });
     }

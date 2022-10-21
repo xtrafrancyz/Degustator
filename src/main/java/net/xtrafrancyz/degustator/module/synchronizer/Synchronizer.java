@@ -153,7 +153,11 @@ public class Synchronizer {
     
     public void update(String caller, Member member, String username, boolean writeToDb) {
         Degustator.log.info("Check (" + caller + "): " + username + " => " + member.getDisplayName() + "#" + member.getDiscriminator());
-        vimeApi.get(username.toLowerCase()).thenAccept(vimeApiPlayer -> {
+        vimeApi.get(username.toLowerCase()).whenComplete((vimeApiPlayer, ex) -> {
+            if (ex != null) {
+                Degustator.log.warn("Load vime api user error", ex);
+                return;
+            }
             Set<Snowflake> roles = member.getRoleIds();
             Set<Snowflake> originalRoles = new HashSet<>(roles);
             List<Consumer<GuildMemberEditSpec.Builder>> modifiers = new ArrayList<>();

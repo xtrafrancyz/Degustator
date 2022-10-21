@@ -70,7 +70,11 @@ public class Revalidator {
                 players.put(lower, new UpdatingPlayer(id, username, rank));
                 nicknames.add(lower);
             }
-            synchronizer.vimeApi.getAll(nicknames).thenAccept(vimeApiPlayerMap -> {
+            synchronizer.vimeApi.getAll(nicknames).whenComplete((vimeApiPlayerMap, ex) -> {
+                if (ex != null) {
+                    Degustator.log.warn("Load vime api users error", ex);
+                    return;
+                }
                 synchronizer.getVimeWorldGuild(guild -> {
                     for (Map.Entry<String, VimeApiPlayer> entry : vimeApiPlayerMap.entrySet()) {
                         UpdatingPlayer player = players.get(entry.getKey());
