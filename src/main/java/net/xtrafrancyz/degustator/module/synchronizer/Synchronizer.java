@@ -20,6 +20,7 @@ import net.xtrafrancyz.degustator.mysql.Row;
 import net.xtrafrancyz.degustator.mysql.SelectResult;
 
 import java.sql.SQLException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -269,7 +270,12 @@ public class Synchronizer {
     }
     
     public void getVimeWorldGuild(Consumer<Guild> consumer) {
-        degustator.gateway.getGuildById(VIMEWORLD_GUILD_ID).subscribe(consumer);
+        degustator.gateway.getGuildById(VIMEWORLD_GUILD_ID)
+            .timeout(Duration.ofSeconds(10))
+            .doOnSuccess(consumer)
+            .doOnCancel(() -> Degustator.log.warn("Get VimeWorld guild timeout"))
+            .doOnError(ex -> Degustator.log.warn("Get VimeWorld guild", ex))
+            .subscribe();
     }
     
     public CompletableFuture<String> getVimeNick(Snowflake id) {
