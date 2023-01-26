@@ -44,6 +44,7 @@ public class Synchronizer {
     
     static {
         RANK_TO_ROLE.put("WARDEN", Snowflake.of(106123456122212352L));
+        RANK_TO_ROLE.put("HELPER", Snowflake.of(1067984195298807890L));
         RANK_TO_ROLE.put("MODER", Snowflake.of(106123456122212352L));
         RANK_TO_ROLE.put("DEV", Snowflake.of(291284899263152128L));
         RANK_TO_ROLE.put("BUILDER", Snowflake.of(163050681266077696L));
@@ -228,12 +229,7 @@ public class Synchronizer {
                 Snowflake old = Snowflake.of(row.getLong("id"));
                 if (id.equals(old))
                     continue;
-                try {
-                    unlink(old);
-                    degustator.mysql.query("DELETE FROM linked WHERE id = ?", ps -> ps.setLong(1, old.asLong()));
-                } catch (Exception ex) {
-                    degustator.mysql.query("UPDATE linked SET username = NULL, rank = NULL WHERE id = ?", ps -> ps.setLong(1, old.asLong()));
-                }
+                unlink(old);
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -250,32 +246,38 @@ public class Synchronizer {
     }
     
     public void unlink(Snowflake id) {
-        usernames.synchronous().invalidate(id);
-        getVimeWorldGuild(guild -> {
-            guild.getMemberById(id)
-                .onErrorResume(error -> Mono.empty())
-                .subscribe(member -> {
+        try {
+            degustator.mysql.query("DELETE FROM linked WHERE id = ?", ps -> ps.setLong(1, id.asLong()));
+            usernames.synchronous().invalidate(id);
+            getVimeWorldGuildMono()
+                .flatMap(guild -> guild.getMemberById(id))
+                .flatMap(member -> {
                     Set<Snowflake> roles = member.getRoleIds();
                     int size = roles.size();
                     roles.remove(VERIFIED_ROLE);
                     roles.removeAll(AUTOROLES);
-                    if (size != roles.size() || member.getNickname().isPresent()) {
-                        member.edit(spec -> {
-                            spec.setNickname(null);
-                            spec.setRoles(roles);
-                        }).subscribe();
-                    }
-                });
-        });
+                    
+                    if (size == roles.size() && !member.getNickname().isPresent())
+                        return Mono.empty();
+                    
+                    return member.edit()
+                        .withNicknameOrNull(null)
+                        .withRoles(roles);
+                }).subscribe();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
     }
     
     public void getVimeWorldGuild(Consumer<Guild> consumer) {
-        degustator.gateway.getGuildById(VIMEWORLD_GUILD_ID)
+        getVimeWorldGuildMono().doOnSuccess(consumer).subscribe();
+    }
+    
+    public Mono<Guild> getVimeWorldGuildMono() {
+        return degustator.gateway.getGuildById(VIMEWORLD_GUILD_ID)
             .timeout(Duration.ofSeconds(10))
-            .doOnSuccess(consumer)
             .doOnCancel(() -> Degustator.log.warn("Get VimeWorld guild timeout"))
-            .doOnError(ex -> Degustator.log.warn("Get VimeWorld guild", ex))
-            .subscribe();
+            .doOnError(ex -> Degustator.log.warn("Get VimeWorld guild", ex));
     }
     
     public CompletableFuture<String> getVimeNick(Snowflake id) {

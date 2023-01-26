@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import net.xtrafrancyz.degustator.command.CommandManager;
 import net.xtrafrancyz.degustator.command.manage.MassBanCommand;
 import net.xtrafrancyz.degustator.command.manage.SwearFilterCommand;
+import net.xtrafrancyz.degustator.command.manage.VimeUnlinkCommand;
 import net.xtrafrancyz.degustator.command.manage.VimenickCommand;
 import net.xtrafrancyz.degustator.command.standard.HelpCommand;
 import net.xtrafrancyz.degustator.command.standard.JokeCommand;
@@ -68,6 +69,7 @@ public class Degustator {
         commandManager.registerCommand(new SwearFilterCommand());
         commandManager.registerCommand(new MassBanCommand());
         commandManager.registerCommand(new VimenickCommand());
+        commandManager.registerCommand(new VimeUnlinkCommand());
         
         new WebServer(this).start();
         

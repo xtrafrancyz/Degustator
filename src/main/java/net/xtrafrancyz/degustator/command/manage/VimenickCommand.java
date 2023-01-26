@@ -21,7 +21,7 @@ public class VimenickCommand extends Command {
     private static final Snowflake DISCORD_MODER_ROLE = Snowflake.of(344881335401316356L);
     private static final Snowflake ADMIN_ROLE = Snowflake.of(106117738677665792L);
     
-    private Synchronizer synchronizer = Degustator.instance().synchronizer;
+    private final Synchronizer synchronizer = Degustator.instance().synchronizer;
     
     public VimenickCommand() {
         super("vimenick",
