@@ -297,6 +297,7 @@ public class Synchronizer {
                         result.getFirst().getString("username")
                     ));
             } catch (SQLException e) {
+                future.completeExceptionally(e);
                 e.printStackTrace();
             }
         });
